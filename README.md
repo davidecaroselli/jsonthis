@@ -51,10 +51,35 @@ In the example above, the `password` property is hidden from the JSON output.
 
 Jsonthis also supports custom serializers and serialization options.
 
+## Change property name casing
+
+You can enforce a specific casing for your properties in the JSON output.
+By default, Jsonthis uses whatever casing you use in your TypeScript code,
+but you can change it to `camelCase`, `snake_case`, or `PascalCase`:
+
+```typescript
+@Json
+class User {
+    id: number = 123;
+    user_name: string = "john-doe";
+    registeredAt: Date = new Date();
+}
+
+const user = new User();
+console.log(new Jsonthis().toJson(user));
+// { id: 123, user_name: 'john-doe', registeredAt: 2024-04-13T20:42:22.121Z }
+console.log(new Jsonthis({case: "camel"}).toJson(user));
+// { id: 123, userName: 'john-doe', registeredAt: 2024-04-13T20:42:22.121Z }
+console.log(new Jsonthis({case: "snake"}).toJson(user));
+// { id: 123, user_name: 'john-doe', registered_at: 2024-04-13T20:42:22.121Z }
+console.log(new Jsonthis({case: "pascal"}).toJson(user));
+// { Id: 123, UserName: 'john-doe', RegisteredAt: 2024-04-13T20:42:22.121Z }
+```
+
 ## Change property visibility
 
 The simplest customization you can do is to hide a property from the JSON output.
-As shown in the example above, you can use the `@JsonField` decorator to hide a property.
+As shown in the "Getting Started" example, you can use the `@JsonField` decorator to hide a property.
 
 You can pass the visible option directly to the `@JsonField` decorator,
 or you can use the `JsonFieldOptions` options object to specify more complex options:

@@ -1,4 +1,4 @@
-import {camelCase, snakeCase} from "case-anything";
+import {camelCase, snakeCase, pascalCase} from "case-anything";
 import {Model, Sequelize} from "@sequelize/core";
 
 export type JsonFieldFunction<R> = (value: any, context?: any, parent?: any) => R;
@@ -56,7 +56,7 @@ function isNull(value: any): boolean {
 
 export type JsonthisOptions = {
     keepNulls?: boolean;  // Whether to keep null values or not (default is false).
-    case?: "camel" | "snake";  // The case to use for field names, default is to keep field name as is.
+    case?: "camel" | "snake" | "pascal";  // The case to use for field names, default is to keep field name as is.
     sequelize?: Sequelize; // Install Jsonthis to this Sequelize instance.
 }
 
@@ -84,6 +84,8 @@ export class Jsonthis {
                 return camelCase(value);
             case "snake":
                 return snakeCase(value);
+            case "pascal":
+                return pascalCase(value);
             default:
                 return value;
         }

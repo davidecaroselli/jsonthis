@@ -240,3 +240,34 @@ test("should fail on duplicate global serializer", () => {
     expect(() => jsonthis.registerGlobalSerializer(Date, dateSerializer))
         .toThrow("Serializer already registered for \"Date\"");
 });
+
+test("serialize with different casing options", () => {
+    @Json
+    class User {
+        id: number = 123;
+        user_name: string = "john-doe";
+        registeredAt: Date = new Date();
+    }
+
+    const user = new User();
+    expect(new Jsonthis().toJson(user)).toStrictEqual({
+        id: 123,
+        user_name: "john-doe",
+        registeredAt: user.registeredAt
+    });
+    expect(new Jsonthis({case: "camel"}).toJson(user)).toStrictEqual({
+        id: 123,
+        userName: "john-doe",
+        registeredAt: user.registeredAt
+    });
+    expect(new Jsonthis({case: "snake"}).toJson(user)).toStrictEqual({
+        id: 123,
+        user_name: "john-doe",
+        registered_at: user.registeredAt
+    });
+    expect(new Jsonthis({case: "pascal"}).toJson(user)).toStrictEqual({
+        Id: 123,
+        UserName: "john-doe",
+        RegisteredAt: user.registeredAt
+    });
+});
