@@ -7,6 +7,9 @@ function evaluateJsonFieldFn<R>(fn: R | JsonFieldFunction<R> | undefined, value:
     return (typeof fn === "function") ? (fn as JsonFieldFunction<R>)(value, context, parent) : fn;
 }
 
+/**
+ * Options for the @JsonField decorator.
+ */
 export type JsonFieldOptions = {
     visible?: boolean | JsonFieldFunction<boolean>;  // Whether the field is visible or not.
     serializer?: JsonFieldFunction<any>;  // The custom serializer function for the column.
@@ -35,10 +38,17 @@ class JsonSchema {
     }
 }
 
+/**
+ * Decorator to mark a class as a Jsonthis-serializable class.
+ */
 export const Json = function (target: Object): void {
     JsonSchema.getOrCreate(target);
 }
 
+/**
+ * Decorator to mark a field as a Jsonthis-serializable field.
+ * @param options The serialization options for the field (or just a boolean to set visibility).
+ */
 export const JsonField = function (options?: boolean | JsonFieldOptions): Function {
     return function JsonField(target: Object, propertyName: PropertyKey): void {
         if (options === undefined) options = {};
@@ -54,12 +64,18 @@ function isNull(value: any): boolean {
     return value === null || value === undefined;
 }
 
+/**
+ * Options for the Jsonthis constructor.
+ */
 export type JsonthisOptions = {
     keepNulls?: boolean;  // Whether to keep null values or not (default is false).
     case?: "camel" | "snake" | "pascal";  // The case to use for field names, default is to keep field name as is.
     sequelize?: Sequelize; // Install Jsonthis to this Sequelize instance.
 }
 
+/**
+ * The main class to convert objects to JSON.
+ */
 export class Jsonthis {
     private readonly options: JsonthisOptions;
     private readonly serializers: Map<Function, JsonFieldFunction<any>> = new Map();
@@ -71,6 +87,11 @@ export class Jsonthis {
             this.sequelizeInstall(this.options.sequelize);
     }
 
+    /**
+     * Register a global serializer for a class.
+     * @param target The class to register the serializer for.
+     * @param serializer The serializer function.
+     */
     registerGlobalSerializer(target: Function, serializer: JsonFieldFunction<any>): void {
         if (this.serializers.has(target))
             throw new Error(`Serializer already registered for "${target.name}"`);
@@ -91,13 +112,18 @@ export class Jsonthis {
         }
     }
 
+    /**
+     * Convert an object to JSON following the schema defined with Jsonthis decorators.
+     * @param target The object to convert.
+     * @param context An optional user-defined context object to pass to the serializers.
+     */
     toJson(target: any, context?: any): any {
         if (isNull(target)) return this.options.keepNulls ? null : undefined;
         const schema = JsonSchema.get(target.constructor);
         return this.toJsonWithSchema(target, schema, context);
     }
 
-    toJsonWithSchema(target: any, schema?: JsonSchema, context?: any, parent?: any): any {
+    private toJsonWithSchema(target: any, schema?: JsonSchema, context?: any, parent?: any): any {
         if (isNull(target)) return this.options.keepNulls ? null : undefined;
 
         const customSerializer = this.serializers.get(target.constructor);
