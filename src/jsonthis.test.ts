@@ -265,4 +265,9 @@ test("serialize with different casing options", () => {
         user_name: "john-doe",
         registered_at: user.registeredAt
     });
+    expect(new Jsonthis({case: "pascal"}).toJson(user)).toStrictEqual({
+        Id: 123,
+        UserName: "john-doe",
+        RegisteredAt: user.registeredAt
+    });
 });
