@@ -72,6 +72,8 @@ export class Jsonthis {
     }
 
     registerGlobalSerializer(target: Function, serializer: JsonFieldFunction<any>): void {
+        if (this.serializers.has(target))
+            throw new Error(`Serializer already registered for "${target.name}"`);
         this.serializers.set(target, serializer);
     }
 
