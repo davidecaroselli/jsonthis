@@ -1,0 +1,40 @@
+{
+  "name": "jsonize",
+  "version": "0.0.1",
+  "description": "Jsonize is the perfect tool to convert your Sequelize models to JSON objects",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "/lib"
+  ],
+  "homepage": "https://github.com/davidecaroselli/jsonize-js",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/davidecaroselli/jsonize-js.git"
+  },
+  "scripts": {
+    "build": "rm -rf lib/* && tsc",
+    "test": "npm run build && jest",
+    "deploy": "npm run build && npm publish --access=public"
+  },
+  "keywords": [
+    "json",
+    "sequelize",
+    "jsonize"
+  ],
+  "author": "Davide Caroselli",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "case-anything": "^2.1.13"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.4",
+    "@babel/plugin-proposal-decorators": "^7.24.1",
+    "@babel/plugin-transform-class-properties": "^7.24.1",
+    "@babel/preset-env": "^7.24.4",
+    "@babel/preset-typescript": "^7.24.1",
+    "@types/jest": "^29.5.12",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0"
+  }
+}
