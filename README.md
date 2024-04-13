@@ -14,7 +14,8 @@
 Jsonthis is the perfect TypeScript library to convert your models to JSON objects.
 It supports custom property serializers, conditionally-visible properties, and much more.
 
-Jsonthis is also the perfect companion to the [Sequelize](https://sequelize.org/) ORM library.
+Jsonthis is also the perfect companion to the [Sequelize](https://sequelize.org/) ORM library!
+To learn more, check out the [Sequelize support](#sequelize-support) section.
 
 ## Getting Started
 
@@ -196,4 +197,57 @@ const jsonthis = new Jsonthis();
 const user = new User();
 console.log(jsonthis.toJson(user, {maskChar: "-"}));
 // { id: 1, email: 'j------e@gmail.com' }
+```
+
+## Sequelize support
+
+Jsonthis can work seamlessly with the [Sequelize](https://sequelize.org/) ORM library. In order to use Jsonthis with
+Sequelize, you need to specify it in library constructor:
+
+```typescript
+const sequelize = new Sequelize({ ... });
+
+const jsonthis = new Jsonthis({
+    sequelize: sequelize
+});
+```
+
+Now you can use the `toJSON()` method with Sequelize models and Jsonthis will intercept the serialization process: 
+
+```typescript
+function maskEmail(value: string): string {
+    return value.replace(/(?<=.).(?=[^@]*?.@)/g, "*");
+}
+
+export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
+    @Attribute(DataTypes.INTEGER)
+    @PrimaryKey
+    declare id: number;
+
+    @Attribute(DataTypes.STRING)
+    @NotNull
+    @JsonField({serializer: maskEmail})
+    declare email: string;
+
+    @Attribute(DataTypes.STRING)
+    @NotNull
+    @JsonField(false)
+    declare password: string;
+}
+
+const jsonthis = new Jsonthis({sequelize});
+
+const user = await User.create({
+    id: 1,
+    email: "john.doe@gmail.com",
+    password: "s3cret"
+});
+
+console.log(user.toJSON());
+// {
+//   id: 1,
+//   email: 'j******e@gmail.com',
+//   updatedAt: 2024-04-13T18:00:20.909Z,
+//   createdAt: 2024-04-13T18:00:20.909Z
+// }
 ```

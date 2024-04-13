@@ -1,4 +1,5 @@
 import {camelCase, snakeCase} from "case-anything";
+import {Model, Sequelize} from "@sequelize/core";
 
 export type JsonFieldFunction<R> = (value: any, context?: any, parent?: any) => R;
 
@@ -56,6 +57,7 @@ function isNull(value: any): boolean {
 export type JsonthisOptions = {
     keepNulls?: boolean;  // Whether to keep null values or not (default is false).
     case?: "camel" | "snake";  // The case to use for field names, default is to keep field name as is.
+    sequelize?: Sequelize; // Install Jsonthis to this Sequelize instance.
 }
 
 export class Jsonthis {
@@ -64,9 +66,14 @@ export class Jsonthis {
 
     constructor(options?: JsonthisOptions) {
         this.options = options || {};
+
+        if (this.options.sequelize)
+            this.sequelizeInstall(this.options.sequelize);
     }
 
     registerGlobalSerializer(target: Function, serializer: JsonFieldFunction<any>): void {
+        if (this.serializers.has(target))
+            throw new Error(`Serializer already registered for "${target.name}"`);
         this.serializers.set(target, serializer);
     }
 
@@ -84,12 +91,16 @@ export class Jsonthis {
 
     toJson(target: any, context?: any): any {
         if (isNull(target)) return this.options.keepNulls ? null : undefined;
-
         const schema = JsonSchema.get(target.constructor);
-        if (schema === undefined) {
-            const customSerializer = this.serializers.get(target.constructor);
-            return customSerializer ? customSerializer(target, context) : target;
-        }
+        return this.toJsonWithSchema(target, schema, context);
+    }
+
+    toJsonWithSchema(target: any, schema?: JsonSchema, context?: any, parent?: any): any {
+        if (isNull(target)) return this.options.keepNulls ? null : undefined;
+
+        const customSerializer = this.serializers.get(target.constructor);
+        if (customSerializer) return customSerializer(target, context, parent);
+        if (schema === undefined) return target;
 
         const json: { [key: string]: any } = {};
         for (const propertyName in target) {
@@ -123,5 +134,21 @@ export class Jsonthis {
         }
 
         return json;
+    }
+
+    private sequelizeInstall(sequelize: Sequelize) {
+        for (const model of sequelize.models) {
+            const schema = JsonSchema.getOrCreate(model); // ensure schema is created
+
+            const jsonthis = this;
+            model.prototype.toJSON = function (context?: any): any {
+                return jsonthis.toJsonWithSchema(this.get(), schema, context);
+            }
+
+            this.registerGlobalSerializer(model, (model: Model, context?: any, parent?: any) => {
+                return jsonthis.toJsonWithSchema(model.get(), schema, context, parent);
+            });
+        }
+
     }
 }

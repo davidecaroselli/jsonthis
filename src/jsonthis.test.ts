@@ -229,3 +229,14 @@ test("serialize context-dependant hidden fields", () => {
         }
     });
 })
+
+test("should fail on duplicate global serializer", () => {
+    function dateSerializer(value: Date): string {
+        return value.toISOString();
+    }
+
+    const jsonthis = new Jsonthis();
+    jsonthis.registerGlobalSerializer(Date, dateSerializer);
+    expect(() => jsonthis.registerGlobalSerializer(Date, dateSerializer))
+        .toThrow("Serializer already registered for \"Date\"");
+});
