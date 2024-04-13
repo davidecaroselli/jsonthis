@@ -11,15 +11,15 @@
 
 [download-url]: https://npmjs.org/package/jsonthis
 
-Jsonthis is the perfect TypeScript library to convert your models to JSON objects.
-It supports custom property serializers, conditionally-visible properties, and much more.
+Jsonthis is a versatile TypeScript library designed to effortlessly convert your models into JSON objects.
+It offers extensive support for custom property serializers, conditional property visibility, and more.
 
-Jsonthis is also the perfect companion to the [Sequelize](https://sequelize.org/) ORM library!
-To learn more, check out the [Sequelize support](#sequelize-support) section.
+Jsonthis seamlessly integrates with the [Sequelize](https://sequelize.org/) ORM library, making it an ideal companion
+for your data management needs. Explore the [Sequelize support](#sequelize-support) section for detailed instructions.
 
 ## Getting Started
 
-This is the simplest way to use Jsonthis:
+Getting started with Jsonthis is quick and straightforward. Here's a simple example to get you going:
 
 ```typescript
 import {Json, JsonField, Jsonthis} from "jsonthis";
@@ -28,7 +28,7 @@ import {Json, JsonField, Jsonthis} from "jsonthis";
 class User {
     id: number;
     email: string;
-    @JsonField(false)
+    @JsonField(false)  // visible=false - the "password" property will not be included in the JSON output
     password: string;
     registeredAt: Date = new Date();
 
@@ -46,14 +46,14 @@ console.log(jsonthis.toJson(user));
 // { id: 1, email: 'john.doe@gmail.com', registeredAt: 2024-04-13T15:29:35.583Z }
 ```
 
-You can also use the `@JsonField` decorator to customize how `Jsonthis` serializes your properties.
-In the example above, the `password` property is hidden from the JSON output.
+Additionally, the `@JsonField` decorator empowers you to fine-tune the serialization process of your properties
+with Jsonthis. You can define custom serializers, change property visibility, and more.
 
-Jsonthis also supports custom serializers and serialization options.
+## Customizing Serialization
 
-## Change property name casing
+### Change Property Name Casing
 
-You can enforce a specific casing for your properties in the JSON output.
+Jsonthis allows you to enforce specific casing for property names in the JSON output.
 By default, Jsonthis uses whatever casing you use in your TypeScript code,
 but you can change it to `camelCase`, `snake_case`, or `PascalCase`:
 
@@ -76,13 +76,11 @@ console.log(new Jsonthis({case: "pascal"}).toJson(user));
 // { Id: 123, UserName: 'john-doe', RegisteredAt: 2024-04-13T20:42:22.121Z }
 ```
 
-## Change property visibility
+### Change Property Visibility
 
-The simplest customization you can do is to hide a property from the JSON output.
-As shown in the "Getting Started" example, you can use the `@JsonField` decorator to hide a property.
-
-You can pass the visible option directly to the `@JsonField` decorator,
-or you can use the `JsonFieldOptions` options object to specify more complex options:
+You can hide a property from the JSON output by setting the `visible` option to `false`.
+You can achieve this by passing `false` to the `@JsonField` decorator directly 
+or by using the `JsonFieldOptions` object:
 
 ```typescript
 @Json
@@ -94,10 +92,10 @@ class User {
 }
 ```
 
-### Conditional visibility
+#### Conditional Visibility
 
-Jsonthis serialization supports a user-defined context object that can be used to influence the serialization process.
-You can use this feature to conditionally hide or show properties based on the context.
+Jsonthis supports conditional property visibility based on a user-defined context.
+This allows you to dynamically show or hide properties as needed.
 
 In the following example, the `email` property is only visible if the email owner is requesting it:
 
@@ -133,7 +131,7 @@ console.log(jsonthis.toJson(user, {callerId: 2}));
 // { id: 1 }
 ```
 
-Note that this also works with nested objects:
+This also works with nested objects:
 
 ```typescript
 const user = new User(1, "john.doe@gmail.com");
@@ -147,14 +145,14 @@ console.log(jsonthis.toJson(user, {callerId: 2}));
 // { id: 1, friend: { id: 2, email: 'jane.doe@gmail.com' } }
 ```
 
-## Custom serializers
+### Custom serializers
 
-You can use custom serializers to transform your properties in the final JSON output.
-Custom serializers can be **Global** or **Field-specific**.
+Jsonthis allows you to define custom serializers to transform property values during serialization.
+These can be either **global** or **field-specific**.
 
-### Global serializer
+#### Global Serializer
 
-You can register a global serializer for a specific type using the `Jsonthis.registerGlobalSerializer()` method:
+Register a global serializer for a specific type using `Jsonthis.registerGlobalSerializer()`:
 
 ```typescript
 function dateSerializer(value: Date): string {
@@ -175,9 +173,9 @@ console.log(jsonthis.toJson(user));
 // { id: 1, registeredAt: 'Sat, 13 Apr 2024 15:50:35 GMT' }
 ```
 
-### Field-specific serializer
+#### Field-Specific Serializer
 
-You can use the `@JsonField` decorator to specify a custom serializer for a specific property:
+Utilize the `@JsonField` decorator to specify a custom serializer for a specific property:
 
 ```typescript
 function maskEmail(value: string): string {
@@ -197,7 +195,7 @@ console.log(jsonthis.toJson(user));
 // { id: 1, email: 'j******e@gmail.com' }
 ```
 
-### Contextual field-specific serializer
+#### Contextual Field-Specific Serializer
 
 Jsonthis serialization supports a user-defined context object that can be used to further influence the serialization
 process:
@@ -225,9 +223,8 @@ console.log(jsonthis.toJson(user, {maskChar: "-"}));
 ```
 
 ## Sequelize support
-
-Jsonthis can work seamlessly with the [Sequelize](https://sequelize.org/) ORM library. In order to use Jsonthis with
-Sequelize, you need to specify it in library constructor:
+Jsonthis seamlessly integrates with the [Sequelize](https://sequelize.org/) ORM library.
+To utilize Jsonthis with Sequelize, simply specify it in the library constructor:
 
 ```typescript
 const sequelize = new Sequelize({ ... });
@@ -237,7 +234,8 @@ const jsonthis = new Jsonthis({
 });
 ```
 
-Now you can use the `toJSON()` method with Sequelize models and Jsonthis will intercept the serialization process: 
+Now, Jsonthis will seamlessly intercept the serialization process when using the `toJSON()` method
+with Sequelize models: 
 
 ```typescript
 function maskEmail(value: string): string {
