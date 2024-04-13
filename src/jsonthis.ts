@@ -53,16 +53,16 @@ function isNull(value: any): boolean {
     return value === null || value === undefined;
 }
 
-export type JsonizeOptions = {
+export type JsonthisOptions = {
     keepNulls?: boolean;  // Whether to keep null values or not (default is false).
     case?: "camel" | "snake";  // The case to use for field names, default is to keep field name as is.
 }
 
-export class Jsonize {
-    private readonly options: JsonizeOptions;
+export class Jsonthis {
+    private readonly options: JsonthisOptions;
     private readonly serializers: Map<Function, JsonFieldFunction<any>> = new Map();
 
-    constructor(options?: JsonizeOptions) {
+    constructor(options?: JsonthisOptions) {
         this.options = options || {};
     }
 

@@ -1,1 +1,1 @@
-export {Jsonize, JsonizeOptions, Json, JsonField, JsonFieldOptions, JsonFieldFunction} from './jsonize';
+export {Jsonthis, JsonthisOptions, Json, JsonField, JsonFieldOptions, JsonFieldFunction} from './jsonthis';

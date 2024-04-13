@@ -1,29 +1,29 @@
-import {Json, JsonField, Jsonize} from "./jsonize";
+import {Json, JsonField, Jsonthis, JsonthisOptions} from "./Jsonthis";
 
 test("serialize simple data types", () => {
-    const jsonize = new Jsonize({keepNulls: true});
+    const jsonthis = new Jsonthis({keepNulls: true});
 
-    expect(jsonize.toJson("hello word")).toBe("hello word");
-    expect(jsonize.toJson(123)).toBe(123);
-    expect(jsonize.toJson(BigInt(9007199254740991))).toBe(BigInt(9007199254740991));
-    expect(jsonize.toJson(true)).toBe(true);
-    expect(jsonize.toJson(undefined)).toBe(null);
-    expect(jsonize.toJson(null)).toBe(null);
+    expect(jsonthis.toJson("hello word")).toBe("hello word");
+    expect(jsonthis.toJson(123)).toBe(123);
+    expect(jsonthis.toJson(BigInt(9007199254740991))).toBe(BigInt(9007199254740991));
+    expect(jsonthis.toJson(true)).toBe(true);
+    expect(jsonthis.toJson(undefined)).toBe(null);
+    expect(jsonthis.toJson(null)).toBe(null);
 
     const date = new Date();
-    expect(jsonize.toJson(date)).toBe(date);
-    expect(jsonize.toJson({value: 123})).toStrictEqual({value: 123});
-    expect(jsonize.toJson([1, "hello"])).toStrictEqual([1, "hello"]);
+    expect(jsonthis.toJson(date)).toBe(date);
+    expect(jsonthis.toJson({value: 123})).toStrictEqual({value: 123});
+    expect(jsonthis.toJson([1, "hello"])).toStrictEqual([1, "hello"]);
 })
 
 test("serialize null and undefined values", () => {
-    const knJsonize = new Jsonize({keepNulls: true});
-    expect(knJsonize.toJson(undefined)).toStrictEqual(null);
-    expect(knJsonize.toJson(null)).toStrictEqual(null);
+    const knJsonthis = new Jsonthis({keepNulls: true});
+    expect(knJsonthis.toJson(undefined)).toStrictEqual(null);
+    expect(knJsonthis.toJson(null)).toStrictEqual(null);
 
-    const skJsonize = new Jsonize({keepNulls: false});
-    expect(skJsonize.toJson(undefined)).toStrictEqual(undefined);
-    expect(skJsonize.toJson(null)).toStrictEqual(undefined);
+    const skJsonthis = new Jsonthis({keepNulls: false});
+    expect(skJsonthis.toJson(undefined)).toStrictEqual(undefined);
+    expect(skJsonthis.toJson(null)).toStrictEqual(undefined);
 })
 
 test("serialize simple data types in @Json object", () => {
@@ -38,14 +38,14 @@ test("serialize simple data types in @Json object", () => {
 
     const user = new User();
 
-    expect(new Jsonize().toJson(user)).toStrictEqual({
+    expect(new Jsonthis().toJson(user)).toStrictEqual({
         id: 123,
         name: "John",
         deleted: false,
         registeredAt: user.registeredAt
     });
 
-    expect(new Jsonize({keepNulls: true}).toJson(user)).toStrictEqual({
+    expect(new Jsonthis({keepNulls: true}).toJson(user)).toStrictEqual({
         id: 123,
         name: "John",
         deleted: false,
@@ -70,7 +70,7 @@ test("serialize nested @Json objects", () => {
     const user = new User(1, "John");
     user.friend = new User(2, "Jane");
 
-    expect(new Jsonize().toJson(user)).toStrictEqual({
+    expect(new Jsonthis().toJson(user)).toStrictEqual({
         id: 1,
         name: "John",
         friend: {
@@ -88,16 +88,16 @@ test("serialize with custom global serializers", () => {
     }
 
     const user = new User();
-    const jsonize = new Jsonize();
+    const jsonthis = new Jsonthis();
 
-    expect(jsonize.toJson(user)).toStrictEqual({
+    expect(jsonthis.toJson(user)).toStrictEqual({
         id: 123,
         registeredAt: user.registeredAt
     });
 
-    jsonize.registerGlobalSerializer(Date, (value: Date) => value.toISOString());
+    jsonthis.registerGlobalSerializer(Date, (value: Date) => value.toISOString());
 
-    expect(jsonize.toJson(user)).toStrictEqual({
+    expect(jsonthis.toJson(user)).toStrictEqual({
         id: 123,
         registeredAt: user.registeredAt.toISOString()
     });
@@ -118,7 +118,7 @@ test("serialize with custom field serializers", () => {
     }
 
     const user = new User();
-    expect(new Jsonize().toJson(user)).toStrictEqual({
+    expect(new Jsonthis().toJson(user)).toStrictEqual({
         id: 123,
         email: "j******e@gmail.com",
         aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
@@ -145,12 +145,12 @@ test("serialize with custom context-dependant field serializers", () => {
     }
 
     const user = new User();
-    expect(new Jsonize().toJson(user)).toStrictEqual({
+    expect(new Jsonthis().toJson(user)).toStrictEqual({
         id: 123,
         email: "j******e@gmail.com",
         aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
     });
-    expect(new Jsonize().toJson(user, {maskChar: "-"})).toStrictEqual({
+    expect(new Jsonthis().toJson(user, {maskChar: "-"})).toStrictEqual({
         id: 123,
         email: "j------e@gmail.com",
         aliases: ["j--------1@gmail.com", "j--------2@hotmail.com"]
@@ -167,7 +167,7 @@ test("serialize hidden fields", () => {
     }
 
     const user = new User();
-    expect(new Jsonize().toJson(user)).toStrictEqual({
+    expect(new Jsonthis().toJson(user)).toStrictEqual({
         id: 123,
         name: "John"
     });
@@ -200,7 +200,7 @@ test("serialize context-dependant hidden fields", () => {
     const user = new User(1, "John", "john.doe@gmail.com");
     user.friend = new User(2, "Jane", "jane.doe@gmail.com");
 
-    expect(new Jsonize().toJson(user, {callerId: 1})).toStrictEqual({
+    expect(new Jsonthis().toJson(user, {callerId: 1})).toStrictEqual({
         id: 1,
         name: "John",
         email: "john.doe@gmail.com",
@@ -210,7 +210,7 @@ test("serialize context-dependant hidden fields", () => {
         }
     });
 
-    expect(new Jsonize().toJson(user, {callerId: 2})).toStrictEqual({
+    expect(new Jsonthis().toJson(user, {callerId: 2})).toStrictEqual({
         id: 1,
         name: "John",
         friend: {
@@ -220,7 +220,7 @@ test("serialize context-dependant hidden fields", () => {
         }
     });
 
-    expect(new Jsonize().toJson(user, {callerId: 3})).toStrictEqual({
+    expect(new Jsonthis().toJson(user, {callerId: 3})).toStrictEqual({
         id: 1,
         name: "John",
         friend: {

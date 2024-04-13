@@ -1,16 +1,16 @@
 {
-  "name": "jsonize",
+  "name": "jsonthis",
   "version": "0.0.1",
-  "description": "Jsonize is the perfect tool to convert your Sequelize models to JSON objects",
+  "description": "Jsonthis is the perfect tool to convert your models to JSON objects",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
     "/lib"
   ],
-  "homepage": "https://github.com/davidecaroselli/jsonize-js",
+  "homepage": "https://github.com/davidecaroselli/jsonthis",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/davidecaroselli/jsonize-js.git"
+    "url": "git+ssh://git@github.com/davidecaroselli/jsonthis"
   },
   "scripts": {
     "build": "rm -rf lib/* && tsc",
@@ -20,7 +20,7 @@
   "keywords": [
     "json",
     "sequelize",
-    "jsonize"
+    "jsonthis"
   ],
   "author": "Davide Caroselli",
   "license": "Apache-2.0",
