@@ -1,312 +1,334 @@
-import {CircularReferenceError, Json, JsonField, Jsonthis, JsonthisOptions} from "./Jsonthis";
+import {CircularReferenceError, Jsonthis} from "./Jsonthis";
+import {Json, JsonField} from "./schema";
 
-test("serialize simple data types", () => {
-    const jsonthis = new Jsonthis({keepNulls: true});
-
-    expect(jsonthis.toJson("hello word")).toBe("hello word");
-    expect(jsonthis.toJson(123)).toBe(123);
-    expect(jsonthis.toJson(BigInt(9007199254740991))).toBe(BigInt(9007199254740991));
-    expect(jsonthis.toJson(true)).toBe(true);
-    expect(jsonthis.toJson(undefined)).toBe(null);
-    expect(jsonthis.toJson(null)).toBe(null);
-
-    const date = new Date();
-    expect(jsonthis.toJson(date)).toBe(date);
-    expect(jsonthis.toJson({value: 123})).toStrictEqual({value: 123});
-    expect(jsonthis.toJson([1, "hello"])).toStrictEqual([1, "hello"]);
-})
-
-test("serialize null and undefined values", () => {
-    const knJsonthis = new Jsonthis({keepNulls: true});
-    expect(knJsonthis.toJson(undefined)).toStrictEqual(null);
-    expect(knJsonthis.toJson(null)).toStrictEqual(null);
-
-    const skJsonthis = new Jsonthis({keepNulls: false});
-    expect(skJsonthis.toJson(undefined)).toStrictEqual(undefined);
-    expect(skJsonthis.toJson(null)).toStrictEqual(undefined);
-})
-
-test("serialize simple data types in @Json object", () => {
-    @Json
-    class User {
-        id: number = 123;
-        name: string = "John";
-        deleted: boolean = false;
-        registeredAt: Date = new Date();
-        deletedAt: Date | null = null;
-    }
-
-    const user = new User();
-
-    expect(new Jsonthis().toJson(user)).toStrictEqual({
-        id: 123,
-        name: "John",
-        deleted: false,
-        registeredAt: user.registeredAt
-    });
-
-    expect(new Jsonthis({keepNulls: true}).toJson(user)).toStrictEqual({
-        id: 123,
-        name: "John",
-        deleted: false,
-        deletedAt: null,
-        registeredAt: user.registeredAt
-    });
-})
-
-test("serialize nested @Json objects", () => {
-    @Json
-    class User {
-        id: number;
-        name: string;
-        friend?: User;
-
-        constructor(id: number, name: string) {
-            this.id = id;
-            this.name = name;
+describe("Jsonthis class", () => {
+    describe("registerGlobalSerializer method", () => {
+        function dateSerializer(value: Date): string {
+            return value.toISOString();
         }
-    }
 
-    const user = new User(1, "John");
-    user.friend = new User(2, "Jane");
-
-    expect(new Jsonthis().toJson(user)).toStrictEqual({
-        id: 1,
-        name: "John",
-        friend: {
-            id: 2,
-            name: "Jane"
-        }
-    });
-})
-
-test("serialize with custom global serializers", () => {
-    @Json
-    class User {
-        id: number = 123;
-        registeredAt: Date = new Date();
-    }
-
-    const user = new User();
-    const jsonthis = new Jsonthis();
-
-    expect(jsonthis.toJson(user)).toStrictEqual({
-        id: 123,
-        registeredAt: user.registeredAt
-    });
-
-    jsonthis.registerGlobalSerializer(Date, (value: Date) => value.toISOString());
-
-    expect(jsonthis.toJson(user)).toStrictEqual({
-        id: 123,
-        registeredAt: user.registeredAt.toISOString()
-    });
-})
-
-test("serialize with custom field serializers", () => {
-    function maskEmail(value: string): string {
-        return value.replace(/(?<=.).(?=[^@]*?.@)/g, "*");
-    }
-
-    @Json
-    class User {
-        id: number = 123;
-        @JsonField({serializer: maskEmail})
-        email: string = "john.doe@gmail.com";
-        @JsonField({serializer: maskEmail})
-        aliases: string[] = ["john.doe-1@gmail.com", "john.doe-2@hotmail.com"];
-    }
-
-    const user = new User();
-    expect(new Jsonthis().toJson(user)).toStrictEqual({
-        id: 123,
-        email: "j******e@gmail.com",
-        aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
-    });
-});
-
-test("serialize with custom context-dependant field serializers", () => {
-    type MaskEmailContext = {
-        maskChar?: string;
-    }
-
-    function maskEmail(value: string, context?: MaskEmailContext): string {
-        const maskChar = context?.maskChar || "*";
-        return value.replace(/(?<=.).(?=[^@]*?.@)/g, maskChar);
-    }
-
-    @Json
-    class User {
-        id: number = 123;
-        @JsonField({serializer: maskEmail})
-        email: string = "john.doe@gmail.com";
-        @JsonField({serializer: maskEmail})
-        aliases: string[] = ["john.doe-1@gmail.com", "john.doe-2@hotmail.com"];
-    }
-
-    const user = new User();
-    expect(new Jsonthis().toJson(user)).toStrictEqual({
-        id: 123,
-        email: "j******e@gmail.com",
-        aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
-    });
-    expect(new Jsonthis().toJson(user, {maskChar: "-"})).toStrictEqual({
-        id: 123,
-        email: "j------e@gmail.com",
-        aliases: ["j--------1@gmail.com", "j--------2@hotmail.com"]
-    });
-});
-
-test("serialize hidden fields", () => {
-    @Json
-    class User {
-        id: number = 123;
-        name: string = "John";
-        @JsonField(false)
-        password: string = "s3cret";
-    }
-
-    const user = new User();
-    expect(new Jsonthis().toJson(user)).toStrictEqual({
-        id: 123,
-        name: "John"
-    });
-})
-
-test("serialize context-dependant hidden fields", () => {
-    type UserContext = {
-        callerId?: number;
-    }
-
-    function showEmailOnlyToOwner(/* email */_: string, context?: UserContext, user?: User): boolean {
-        return context?.callerId === user?.id;
-    }
-
-    @Json
-    class User {
-        id: number;
-        name: string;
-        @JsonField({visible: showEmailOnlyToOwner})
-        email: string;
-        friend?: User;
-
-        constructor(id: number, name: string, email: string) {
-            this.id = id;
-            this.name = name;
-            this.email = email;
-        }
-    }
-
-    const user = new User(1, "John", "john.doe@gmail.com");
-    user.friend = new User(2, "Jane", "jane.doe@gmail.com");
-
-    expect(new Jsonthis().toJson(user, {callerId: 1})).toStrictEqual({
-        id: 1,
-        name: "John",
-        email: "john.doe@gmail.com",
-        friend: {
-            id: 2,
-            name: "Jane"
-        }
-    });
-
-    expect(new Jsonthis().toJson(user, {callerId: 2})).toStrictEqual({
-        id: 1,
-        name: "John",
-        friend: {
-            id: 2,
-            name: "Jane",
-            email: "jane.doe@gmail.com"
-        }
-    });
-
-    expect(new Jsonthis().toJson(user, {callerId: 3})).toStrictEqual({
-        id: 1,
-        name: "John",
-        friend: {
-            id: 2,
-            name: "Jane"
-        }
-    });
-})
-
-test("should fail on duplicate global serializer", () => {
-    function dateSerializer(value: Date): string {
-        return value.toISOString();
-    }
-
-    const jsonthis = new Jsonthis();
-    jsonthis.registerGlobalSerializer(Date, dateSerializer);
-    expect(() => jsonthis.registerGlobalSerializer(Date, dateSerializer))
-        .toThrow("Serializer already registered for \"Date\"");
-});
-
-test("serialize with different casing options", () => {
-    @Json
-    class User {
-        id: number = 123;
-        user_name: string = "john-doe";
-        registeredAt: Date = new Date();
-    }
-
-    const user = new User();
-    expect(new Jsonthis().toJson(user)).toStrictEqual({
-        id: 123,
-        user_name: "john-doe",
-        registeredAt: user.registeredAt
-    });
-    expect(new Jsonthis({case: "camel"}).toJson(user)).toStrictEqual({
-        id: 123,
-        userName: "john-doe",
-        registeredAt: user.registeredAt
-    });
-    expect(new Jsonthis({case: "snake"}).toJson(user)).toStrictEqual({
-        id: 123,
-        user_name: "john-doe",
-        registered_at: user.registeredAt
-    });
-    expect(new Jsonthis({case: "pascal"}).toJson(user)).toStrictEqual({
-        Id: 123,
-        UserName: "john-doe",
-        RegisteredAt: user.registeredAt
-    });
-});
-
-test("should serialize circular references", () => {
-    @Json
-    class User {
-        id: number;
-        name: string;
-        friend?: User;
-
-        constructor(id: number, name: string) {
-            this.id = id;
-            this.name = name;
-        }
-    }
-
-    const user = new User(1, "John");
-    user.friend = new User(2, "Jane");
-    user.friend.friend = user;
-
-    // Default is to throw an error.
-    expect(() => new Jsonthis().toJson(user)).toThrow(new CircularReferenceError(user, user.friend));
-
-    function serializeCircularReference(value: any): any {
-        return { $ref: `$${value.constructor.name}(${value.id})` };
-    }
-
-    // Custom serializer.
-    const jsonthis = new Jsonthis({circularReferenceSerializer: serializeCircularReference});
-    expect(jsonthis.toJson(user)).toStrictEqual({
-        id: 1,
-        name: "John",
-        friend: {
-            id: 2,
-            name: "Jane",
-            friend: {
-                $ref: "$User(1)"
+        it("should register a global serializer for a class", () => {
+            @Json
+            class User {
+                public registeredAt: Date = new Date();
             }
-        }
+
+            const user = new User();
+
+            expect(new Jsonthis().toJson(user)).toStrictEqual({
+                registeredAt: user.registeredAt
+            });
+
+            const jsonthis = new Jsonthis();
+            jsonthis.registerGlobalSerializer(Date, dateSerializer);
+
+            expect(jsonthis.toJson(user)).toStrictEqual({
+                registeredAt: user.registeredAt.toISOString()
+            });
+        });
+
+        it("should throw an error when trying to register a serializer for a class that already has one", () => {
+            @Json
+            class User {
+                public registeredAt: Date = new Date();
+            }
+
+            const jsonthis = new Jsonthis();
+            jsonthis.registerGlobalSerializer(Date, dateSerializer);
+
+            expect(() => jsonthis.registerGlobalSerializer(Date, dateSerializer))
+                .toThrow("Serializer already registered for \"Date\"");
+        });
+    });
+
+    describe("toJson method", () => {
+        describe("with simple data types", () => {
+            it("should serialize a string", () => {
+                expect(new Jsonthis().toJson("hello word")).toBe("hello word");
+            });
+            it("should serialize a number", () => {
+                expect(new Jsonthis().toJson(123)).toBe(123);
+            });
+            it("should serialize a BigInt", () => {
+                expect(new Jsonthis().toJson(BigInt(9007199254740991))).toBe(BigInt(9007199254740991));
+            });
+            it("should serialize a boolean", () => {
+                expect(new Jsonthis().toJson(true)).toBe(true);
+            });
+            it("should serialize a Date", () => {
+                const date = new Date();
+                expect(new Jsonthis().toJson(date)).toBe(date);
+            });
+            it("should serialize an object", () => {
+                expect(new Jsonthis().toJson({value: 123})).toStrictEqual({value: 123});
+            });
+            it("should serialize an array", () => {
+                expect(new Jsonthis().toJson([1, "hello"])).toStrictEqual([1, "hello"]);
+            });
+        });
+
+        describe("with @Json decorated class", () => {
+            it("should serialize simple data types in @Json decorated class", () => {
+                @Json
+                class User {
+                    id: BigInt = BigInt(123);
+                    age: number = 25;
+                    name: string = "John";
+                    deleted: boolean = false;
+                    registeredAt: Date = new Date();
+                    address: object = {city: "New York", country: "USA"};
+                    aliases: string[] = ["John Doe", "Johny"];
+                }
+
+                const user = new User();
+
+                expect(new Jsonthis().toJson(user)).toStrictEqual({
+                    id: BigInt(123),
+                    age: 25,
+                    name: "John",
+                    deleted: false,
+                    registeredAt: user.registeredAt,
+                    address: {city: "New York", country: "USA"},
+                    aliases: ["John Doe", "Johny"]
+                });
+            });
+
+            it("should serialize nested @Json decorated class", () => {
+                function dateSerializer(value: Date): string {
+                    return value.toISOString();
+                }
+
+                @Json
+                class User {
+                    id: number;
+                    name: string;
+                    registeredAt: Date = new Date();
+                    friend?: User;
+
+                    constructor(id: number, name: string) {
+                        this.id = id;
+                        this.name = name;
+                    }
+                }
+
+                const user = new User(1, "John");
+                user.friend = new User(2, "Jane");
+
+                const jsonthis = new Jsonthis();
+                jsonthis.registerGlobalSerializer(Date, dateSerializer);
+
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    name: "John",
+                    registeredAt: user.registeredAt.toISOString(),
+                    friend: {
+                        id: 2,
+                        name: "Jane",
+                        registeredAt: user.friend.registeredAt.toISOString()
+                    }
+                });
+            });
+        });
+
+        describe("with @JsonField decorated class", () => {
+            describe("with visible fields", () => {
+                it("should serialize visible fields", () => {
+                    class User {
+                        id: number = 123;
+                        @JsonField(true)
+                        name: string = "John";
+                    }
+
+                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                        id: 123,
+                        name: "John"
+                    });
+                });
+
+                it("should not serialize hidden fields", () => {
+                    class User {
+                        id: number = 123;
+                        @JsonField(false)
+                        password: string = "s3cret";
+                    }
+
+                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                        id: 123
+                    });
+                });
+
+                it("should serialize fields with custom visible function", () => {
+                    function showEmailOnlyToOwner(_: string, context: { callerId: number }, user: User): boolean {
+                        return context.callerId === user.id;
+                    }
+
+                    class User {
+                        id: number = 1;
+                        @JsonField({visible: showEmailOnlyToOwner})
+                        email: string = "john.doe@gmail.com";
+                    }
+
+                    expect(new Jsonthis().toJson(new User(), {callerId: 1})).toStrictEqual({
+                        id: 1,
+                        email: "john.doe@gmail.com"
+                    });
+                    expect(new Jsonthis().toJson(new User(), {callerId: 2})).toStrictEqual({
+                        id: 1
+                    });
+                });
+            });
+
+            describe("with custom serializers", () => {
+                it("should serialize fields with custom serializer", () => {
+                    function maskEmail(value: string): string {
+                        return value.replace(/(?<=.).(?=[^@]*?.@)/g, "*");
+                    }
+
+                    class User {
+                        id: number = 1;
+                        @JsonField({serializer: maskEmail})
+                        email: string = "john.doe@gmail.com";
+                        @JsonField({serializer: maskEmail})
+                        aliases: string[] = ["john.doe-1@gmail.com", "john.doe-2@hotmail.com"];
+                    }
+
+                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                        id: 1,
+                        email: "j******e@gmail.com",
+                        aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
+                    });
+                });
+
+                it("should serialize fields with custom context-dependant serializer", () => {
+                    type MaskEmailContext = {
+                        maskChar?: string;
+                    }
+
+                    function maskEmail(value: string, context?: MaskEmailContext): string {
+                        const maskChar = context?.maskChar || "*";
+                        return value.replace(/(?<=.).(?=[^@]*?.@)/g, maskChar);
+                    }
+
+                    class User {
+                        id: number = 1;
+                        @JsonField({serializer: maskEmail})
+                        email: string = "john.doe@gmail.com";
+                        @JsonField({serializer: maskEmail})
+                        aliases: string[] = ["john.doe-1@gmail.com", "john.doe-2@hotmail.com"];
+                    }
+
+                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                        id: 1,
+                        email: "j******e@gmail.com",
+                        aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
+                    });
+                    expect(new Jsonthis().toJson(new User(), {maskChar: "-"})).toStrictEqual({
+                        id: 1,
+                        email: "j------e@gmail.com",
+                        aliases: ["j--------1@gmail.com", "j--------2@hotmail.com"]
+                    });
+                });
+            });
+        });
+
+        describe("with options", () => {
+            describe("keepNulls option", () => {
+                @Json
+                class User {
+                    id: number = 1;
+                    name: string | null = null;
+                }
+
+                it("should serialize null values when keepNulls is true", () => {
+                    const jsonthis = new Jsonthis({keepNulls: true});
+                    expect(jsonthis.toJson(new User())).toStrictEqual({id: 1, name: null});
+                });
+
+                it("should skip null values when keepNulls is false", () => {
+                    const jsonthis = new Jsonthis({keepNulls: false});
+                    expect(jsonthis.toJson(new User())).toStrictEqual({id: 1});
+                });
+            });
+
+            describe("case option", () => {
+                @Json
+                class User {
+                    id: number = 1;
+                    user_name: string = "john-doe";
+                    registeredAt: Date = new Date();
+                }
+
+                const user = new User();
+
+                it("should serialize with camel casing", () => {
+                    expect(new Jsonthis({case: "camel"}).toJson(user)).toStrictEqual({
+                        id: 1,
+                        userName: "john-doe",
+                        registeredAt: user.registeredAt
+                    });
+                });
+
+                it("should serialize with snake casing", () => {
+                    expect(new Jsonthis({case: "snake"}).toJson(user)).toStrictEqual({
+                        id: 1,
+                        user_name: "john-doe",
+                        registered_at: user.registeredAt
+                    });
+                });
+
+                it("should serialize with pascal casing", () => {
+                    expect(new Jsonthis({case: "pascal"}).toJson(user)).toStrictEqual({
+                        Id: 1,
+                        UserName: "john-doe",
+                        RegisteredAt: user.registeredAt
+                    });
+                });
+            });
+
+            describe("circularReferenceSerializer option", () => {
+                @Json
+                class Node {
+                    public value: number;
+                    public next?: Node;
+
+                    constructor(value: number) {
+                        this.value = value;
+                    }
+                }
+
+                it("should throw an error when encountering a circular reference without a circularReferenceSerializer", () => {
+                    const node1 = new Node(1);
+                    const node2 = new Node(2);
+                    node2.next = node1;
+                    node1.next = node2;
+
+                    const jsonthis = new Jsonthis();
+                    expect(() => jsonthis.toJson(node1)).toThrow(new CircularReferenceError(node1, node2));
+                });
+
+                it("should handle circular references using the provided circularReferenceSerializer", () => {
+                    const node1 = new Node(1);
+                    const node2 = new Node(2);
+                    node2.next = node1;
+                    node1.next = node2;
+
+                    const jsonthis = new Jsonthis({
+                        circularReferenceSerializer: function (node: any) {
+                            return {"$ref": `$${node.constructor.name}(${node.value})`}
+                        }
+                    });
+
+                    expect(jsonthis.toJson(node1)).toStrictEqual({
+                        value: 1,
+                        next: {
+                            value: 2,
+                            next: {
+                                "$ref": "$Node(1)"
+                            }
+                        }
+                    });
+                });
+            });
+        });
     });
 });

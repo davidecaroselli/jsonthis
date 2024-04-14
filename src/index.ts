@@ -1,9 +1,12 @@
 export {
-    Jsonthis,
-    JsonthisOptions,
     Json,
     JsonField,
     JsonFieldOptions,
-    JsonFieldFunction,
+    JsonFieldFunction
+} from './schema';
+
+export {
+    Jsonthis,
+    JsonthisOptions,
     CircularReferenceError
 } from './jsonthis';
