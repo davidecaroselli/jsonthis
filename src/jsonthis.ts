@@ -75,8 +75,13 @@ export type JsonthisOptions = {
 }
 
 export class CircularReferenceError extends Error {
-    constructor() {
+    public parent: any;
+    public ref: any;
+
+    constructor(ref: any, parent: any) {
         super("Circular reference detected");
+        this.parent = parent;
+        this.ref = ref;
     }
 }
 
@@ -122,7 +127,7 @@ export class Jsonthis {
     private serializeCircularReference(value: any, context?: any, parent?: any): any {
         if (this.options.circularReferenceSerializer)
             return this.options.circularReferenceSerializer(value, context, parent);
-        throw new CircularReferenceError();
+        throw new CircularReferenceError(value, parent);
     }
 
     /**
