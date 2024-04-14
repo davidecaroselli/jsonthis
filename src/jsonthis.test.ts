@@ -1,4 +1,4 @@
-import {Json, JsonField, Jsonthis, JsonthisOptions} from "./Jsonthis";
+import {CircularReferenceError, Json, JsonField, Jsonthis, JsonthisOptions} from "./Jsonthis";
 
 test("serialize simple data types", () => {
     const jsonthis = new Jsonthis({keepNulls: true});
@@ -269,5 +269,44 @@ test("serialize with different casing options", () => {
         Id: 123,
         UserName: "john-doe",
         RegisteredAt: user.registeredAt
+    });
+});
+
+test("should serialize circular references", () => {
+    @Json
+    class User {
+        id: number;
+        name: string;
+        friend?: User;
+
+        constructor(id: number, name: string) {
+            this.id = id;
+            this.name = name;
+        }
+    }
+
+    const user = new User(1, "John");
+    user.friend = new User(2, "Jane");
+    user.friend.friend = user;
+
+    // Default is to throw an error.
+    expect(() => new Jsonthis().toJson(user)).toThrow(new CircularReferenceError(user, user.friend));
+
+    function serializeCircularReference(value: any): any {
+        return { $ref: `$${value.constructor.name}(${value.id})` };
+    }
+
+    // Custom serializer.
+    const jsonthis = new Jsonthis({circularReferenceSerializer: serializeCircularReference});
+    expect(jsonthis.toJson(user)).toStrictEqual({
+        id: 1,
+        name: "John",
+        friend: {
+            id: 2,
+            name: "Jane",
+            friend: {
+                $ref: "$User(1)"
+            }
+        }
     });
 });
