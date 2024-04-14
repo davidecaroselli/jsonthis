@@ -222,6 +222,41 @@ console.log(jsonthis.toJson(user, {maskChar: "-"}));
 // { id: 1, email: 'j------e@gmail.com' }
 ```
 
+## Circular References
+
+Jsonthis can detect circular references out of the box. When serializing an object with circular references, the default
+behavior is to throw a `CircularReferenceError`. However, you can customize this behavior by providing a custom handler:
+
+```typescript
+function serializeCircularReference(value: any): any {
+    return { $ref: `$${value.constructor.name}(${value.id})` };
+}
+
+@Json
+class User {
+    id: number;
+    name: string;
+    friend?: User;
+
+    constructor(id: number, name: string) {
+        this.id = id;
+        this.name = name;
+    }
+}
+
+const user = new User(1, "John");
+user.friend = new User(2, "Jane");
+user.friend.friend = user;
+
+const jsonthis = new Jsonthis({circularReferenceSerializer: serializeCircularReference});
+console.log(jsonthis.toJson(user));
+// {
+//   id: 1,
+//   name: 'John',
+//   friend: { id: 2, name: 'Jane', friend: { '$ref': '$User(1)' } }
+// }
+```
+
 ## Sequelize support
 Jsonthis seamlessly integrates with the [Sequelize](https://sequelize.org/) ORM library.
 To utilize Jsonthis with Sequelize, simply specify it in the library constructor:
