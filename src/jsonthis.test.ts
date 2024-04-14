@@ -290,7 +290,7 @@ test("should serialize circular references", () => {
     user.friend.friend = user;
 
     // Default is to throw an error.
-    expect(() => new Jsonthis().toJson(user)).toThrow(new CircularReferenceError());
+    expect(() => new Jsonthis().toJson(user)).toThrow(new CircularReferenceError(user, user.friend));
 
     function serializeCircularReference(value: any): any {
         return { $ref: `$${value.constructor.name}(${value.id})` };
