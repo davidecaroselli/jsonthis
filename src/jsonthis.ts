@@ -71,6 +71,13 @@ export type JsonthisOptions = {
     keepNulls?: boolean;  // Whether to keep null values or not (default is false).
     case?: "camel" | "snake" | "pascal";  // The case to use for field names, default is to keep field name as is.
     sequelize?: Sequelize; // Install Jsonthis to this Sequelize instance.
+    circularReferenceSerializer?: JsonFieldFunction<any>; // The custom serializer function for circular references, default it to throw an error.
+}
+
+export class CircularReferenceError extends Error {
+    constructor() {
+        super("Circular reference detected");
+    }
 }
 
 /**
@@ -112,6 +119,12 @@ export class Jsonthis {
         }
     }
 
+    private serializeCircularReference(value: any, context?: any, parent?: any): any {
+        if (this.options.circularReferenceSerializer)
+            return this.options.circularReferenceSerializer(value, context, parent);
+        throw new CircularReferenceError();
+    }
+
     /**
      * Convert an object to JSON following the schema defined with Jsonthis decorators.
      * @param target The object to convert.
@@ -123,8 +136,12 @@ export class Jsonthis {
         return this.toJsonWithSchema(target, schema, context);
     }
 
-    private toJsonWithSchema(target: any, schema?: JsonSchema, context?: any, parent?: any): any {
+    private toJsonWithSchema(target: any, schema?: JsonSchema, context?: any, parent?: any, visited?: Set<any>): any {
         if (isNull(target)) return this.options.keepNulls ? null : undefined;
+        if (!visited) visited = new Set();
+
+        if (visited.has(target)) return this.serializeCircularReference(target, context, parent);
+        visited.add(target);
 
         const customSerializer = this.serializers.get(target.constructor);
         if (customSerializer) return customSerializer(target, context, parent);
@@ -152,11 +169,11 @@ export class Jsonthis {
                     if (serializer)
                         json[key] = value.map(e => evaluateJsonFieldFn(serializer, e, context, target));
                     else
-                        json[key] = value.map(e => this.toJson(e, context));
+                        json[key] = value.map(e => this.toJsonWithSchema(e, JsonSchema.get(e.constructor), context, target, visited));
                 } else if (serializer) {
                     json[key] = evaluateJsonFieldFn(serializer, value, context, target)
                 } else {
-                    json[key] = this.toJson(value, context);
+                    json[key] = this.toJsonWithSchema(value,JsonSchema.get(value.constructor),  context, target, visited);
                 }
             }
         }
