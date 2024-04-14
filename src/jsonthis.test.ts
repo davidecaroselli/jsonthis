@@ -271,3 +271,34 @@ test("serialize with different casing options", () => {
         RegisteredAt: user.registeredAt
     });
 });
+
+test("should serialize circular references", () => {
+    @Json
+    class User {
+        id: number;
+        name: string;
+        friend?: User;
+
+        constructor(id: number, name: string) {
+            this.id = id;
+            this.name = name;
+        }
+    }
+
+    const user = new User(1, "John");
+    user.friend = new User(2, "Jane");
+    user.friend.friend = user;
+
+    const jsonthis = new Jsonthis();
+    expect(jsonthis.toJson(user)).toStrictEqual({
+        id: 1,
+        name: "John",
+        friend: {
+            id: 2,
+            name: "Jane",
+            friend: {
+                $ref: "$1"
+            }
+        }
+    });
+});
