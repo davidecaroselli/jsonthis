@@ -1,15 +1,19 @@
-# Jsonthis
+# 🚀 Jsonthis!
 
 [![npm version][npm-image]][npm-url]
 [![npm download][download-image]][download-url]
+[![github prs][github-prs-image]][github-prs-url]
+[![npm license][license-image]][license-url]
 
-[npm-image]: https://img.shields.io/npm/v/jsonthis?style=flat-square
-
+[npm-image]: https://img.shields.io/npm/v/jsonthis
 [npm-url]: https://npmjs.org/package/jsonthis
-
-[download-image]: https://img.shields.io/npm/dm/jsonthis?style=flat-square
-
+[download-image]: https://img.shields.io/npm/dm/jsonthis
 [download-url]: https://npmjs.org/package/jsonthis
+[license-image]: https://img.shields.io/npm/l/jsonthis
+[license-url]: https://github.com/davidecaroselli/jsonthis/blob/main/LICENSE
+[github-prs-image]: https://img.shields.io/github/issues-pr-closed/davidecaroselli/jsonthis
+[github-prs-url]: https://github.com/davidecaroselli/jsonthis/pulls
+
 
 Jsonthis is a versatile TypeScript library designed to effortlessly convert your models into JSON objects.
 It offers extensive support for custom property serializers, conditional property visibility, and more.
