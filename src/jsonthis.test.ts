@@ -1,4 +1,4 @@
-import {CircularReferenceError, Jsonthis} from "./Jsonthis";
+import {CircularReferenceError, Jsonthis, ToJsonOptions} from "./Jsonthis";
 import {Json, JsonField} from "./schema";
 
 describe("Jsonthis class", () => {
@@ -158,8 +158,8 @@ describe("Jsonthis class", () => {
                 });
 
                 it("should serialize fields with custom visible function", () => {
-                    function showEmailOnlyToOwner(_: string, context: { callerId: number }, user: User): boolean {
-                        return context.callerId === user.id;
+                    function showEmailOnlyToOwner(_: string, opts?: ToJsonOptions, user?: User): boolean {
+                        return opts?.context?.callerId === user!.id;
                     }
 
                     class User {
@@ -168,11 +168,11 @@ describe("Jsonthis class", () => {
                         email: string = "john.doe@gmail.com";
                     }
 
-                    expect(new Jsonthis().toJson(new User(), {callerId: 1})).toStrictEqual({
+                    expect(new Jsonthis().toJson(new User(), {context: {callerId: 1}})).toStrictEqual({
                         id: 1,
                         email: "john.doe@gmail.com"
                     });
-                    expect(new Jsonthis().toJson(new User(), {callerId: 2})).toStrictEqual({
+                    expect(new Jsonthis().toJson(new User(), {context: {callerId: 2}})).toStrictEqual({
                         id: 1
                     });
                 });
@@ -204,8 +204,8 @@ describe("Jsonthis class", () => {
                         maskChar?: string;
                     }
 
-                    function maskEmail(value: string, context?: MaskEmailContext): string {
-                        const maskChar = context?.maskChar || "*";
+                    function maskEmail(value: string, opts?: ToJsonOptions): string {
+                        const maskChar = opts?.context?.maskChar || "*";
                         return value.replace(/(?<=.).(?=[^@]*?.@)/g, maskChar);
                     }
 
@@ -222,7 +222,7 @@ describe("Jsonthis class", () => {
                         email: "j******e@gmail.com",
                         aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
                     });
-                    expect(new Jsonthis().toJson(new User(), {maskChar: "-"})).toStrictEqual({
+                    expect(new Jsonthis().toJson(new User(), {context: {maskChar: "-"}})).toStrictEqual({
                         id: 1,
                         email: "j------e@gmail.com",
                         aliases: ["j--------1@gmail.com", "j--------2@hotmail.com"]

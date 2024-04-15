@@ -1,3 +1,5 @@
+import {ToJsonOptions} from "./jsonthis";
+
 /**
  * Decorator to mark a class as a Jsonthis-serializable class.
  */
@@ -22,7 +24,7 @@ export const JsonField = function (options?: boolean | JsonFieldOptions): Functi
     }
 }
 
-export type JsonFieldFunction<R> = (value: any, context?: any, parent?: any) => R;
+export type JsonFieldFunction<R> = (value: any, options?: ToJsonOptions, parent?: any) => R;
 
 export interface JsonifiedConstructor extends FunctionConstructor {
     __json_schema?: JsonSchema;
