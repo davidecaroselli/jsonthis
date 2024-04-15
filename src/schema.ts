@@ -33,6 +33,8 @@ export type JsonTraversalState = {
     visited: Set<any>;
 }
 
+export type SimpleJsonTraversalFn<R> = (value: any) => R;
+export type ComplexJsonTraversalFn<R> = (value: any, state: JsonTraversalState, options?: ToJsonOptions) => R;
 /**
  * You can use a traversal function to customize the serialization of a value.
  *  - A "serializer" is a JsonTraversalFn that is invoked whenever a field has a type that matches the
@@ -40,12 +42,15 @@ export type JsonTraversalState = {
  *  - A "visible" property can (optionally) be a JsonTraversalFn that determines whether the field is visible or not
  *  while traversing the object.
  */
-export type JsonTraversalFn<R> = (state: JsonTraversalState, value: any, options?: ToJsonOptions) => R;
+export type JsonTraversalFn<R> = SimpleJsonTraversalFn<R> | ComplexJsonTraversalFn<R>;
 
 export function evaluateJsonTraversalFn<R>(fn: JsonTraversalFn<R> | undefined | R,
-                                           state: JsonTraversalState, value: any, options?: ToJsonOptions): R | undefined {
+                                           value: any, state: JsonTraversalState, options?: ToJsonOptions): R | undefined {
     if (fn === undefined) return undefined;
-    if (typeof fn === "function") return (fn as JsonTraversalFn<R>)(state, value, options);
+    if (typeof fn === "function") {
+        if (fn.length === 1) return (fn as SimpleJsonTraversalFn<R>)(value);
+        else return (fn as ComplexJsonTraversalFn<R>)(value, state, options);
+    }
     return fn;
 }
 

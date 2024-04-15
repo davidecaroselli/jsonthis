@@ -25,13 +25,13 @@ export type ToJsonOptions = {
 }
 
 export class CircularReferenceError extends Error {
-    public state: JsonTraversalState;
     public ref: any;
+    public state: JsonTraversalState;
 
-    constructor(state: JsonTraversalState, ref: any) {
+    constructor(ref: any, state: JsonTraversalState) {
         super("Circular reference detected");
-        this.state = state;
         this.ref = ref;
+        this.state = state;
     }
 }
 
@@ -80,10 +80,10 @@ export class Jsonthis {
         }
     }
 
-    private serializeCircularReference(state: JsonTraversalState, value: any, options?: ToJsonOptions): any {
+    private serializeCircularReference(value: any, state: JsonTraversalState, options?: ToJsonOptions): any {
         if (this.options.circularReferenceSerializer)
-            return this.options.circularReferenceSerializer(state, value, options);
-        throw new CircularReferenceError(state, value);
+            return this.options.circularReferenceSerializer(value, state, options);
+        throw new CircularReferenceError(value, state);
     }
 
     /**
@@ -105,12 +105,12 @@ export class Jsonthis {
 
         // JsonTraversalState - update visited set
         if (state.visited.has(target))
-            return this.serializeCircularReference(state, target, options);
+            return this.serializeCircularReference(target, state, options);
         state.visited.add(target);
         // -----------------------------------
 
         const customSerializer = this.serializers.get(target.constructor);
-        if (customSerializer) return evaluateJsonTraversalFn(customSerializer, state, target, options);
+        if (customSerializer) return evaluateJsonTraversalFn(customSerializer, target, state, options);
 
         if (schema === undefined) return target;
 
@@ -125,7 +125,7 @@ export class Jsonthis {
             const value = target[propertyName];
 
             const fieldOpts: JsonFieldOptions = schema.definedFields.get(propertyName) || {};
-            const visible = evaluateJsonTraversalFn(fieldOpts.visible, state, value, options);
+            const visible = evaluateJsonTraversalFn(fieldOpts.visible, value, state, options);
             if (visible === false) continue;
 
             const key = this.propertyNameToString(propertyName);
@@ -138,11 +138,11 @@ export class Jsonthis {
 
                 if (Array.isArray(value)) {
                     if (serializer)
-                        json[key] = value.map(e => evaluateJsonTraversalFn(serializer, state, e, options));
+                        json[key] = value.map(e => evaluateJsonTraversalFn(serializer, e, state, options));
                     else
                         json[key] = value.map(e => this.traverseJson(state, e, JsonSchema.get(e.constructor), options));
                 } else if (serializer) {
-                    json[key] = evaluateJsonTraversalFn(serializer, state, value, options)
+                    json[key] = evaluateJsonTraversalFn(serializer, value, state, options)
                 } else {
                     json[key] = this.traverseJson(state, value, JsonSchema.get(value.constructor), options);
                 }
@@ -161,7 +161,7 @@ export class Jsonthis {
                 return jsonthis.traverseJson(newTraversalState(), this.get(), schema, options);
             }
 
-            this.registerGlobalSerializer(model, (state: JsonTraversalState, model: Model, options?: ToJsonOptions) => {
+            this.registerGlobalSerializer(model, (model: Model, state: JsonTraversalState, options?: ToJsonOptions) => {
                 return jsonthis.traverseJson(state, model.get(), schema, options);
             });
         }

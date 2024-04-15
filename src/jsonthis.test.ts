@@ -1,12 +1,12 @@
 import {CircularReferenceError, Jsonthis, ToJsonOptions} from "./Jsonthis";
 import {Json, JsonField, JsonSchema, JsonTraversalState} from "./schema";
 
-function dateSerializer(_: JsonTraversalState, value: Date): string {
-    return value.toISOString();
-}
-
 describe("Jsonthis class", () => {
     describe("registerGlobalSerializer method", () => {
+        function dateSerializer(value: Date): string {
+            return value.toISOString();
+        }
+
         it("should register a global serializer for a class", () => {
             @Json
             class User {
@@ -63,6 +63,10 @@ describe("Jsonthis class", () => {
         });
 
         describe("with @Json decorated class", () => {
+            function dateSerializer(value: Date): string {
+                return value.toISOString();
+            }
+
             it("should serialize simple data types in @Json decorated class", () => {
                 @Json
                 class User {
@@ -149,7 +153,7 @@ describe("Jsonthis class", () => {
                 });
 
                 it("should serialize fields with custom visible function", () => {
-                    function showEmailOnlyToOwner(state: JsonTraversalState, _: string, opts?: ToJsonOptions): boolean {
+                    function showEmailOnlyToOwner(email: string, state: JsonTraversalState, opts?: ToJsonOptions): boolean {
                         return opts?.context?.callerId === (state.parent as User)?.id;
                     }
 
@@ -171,7 +175,7 @@ describe("Jsonthis class", () => {
 
             describe("with custom serializers", () => {
                 it("should serialize fields with custom serializer", () => {
-                    function maskEmail(_: JsonTraversalState, value: string): string {
+                    function maskEmail(value: string): string {
                         return value.replace(/(?<=.).(?=[^@]*?.@)/g, "*");
                     }
 
@@ -191,7 +195,7 @@ describe("Jsonthis class", () => {
                 });
 
                 it("should serialize fields with custom context-dependant serializer", () => {
-                    function maskEmail(_: JsonTraversalState, value: string, opts?: ToJsonOptions): string {
+                    function maskEmail(value: string, state: JsonTraversalState, opts?: ToJsonOptions): string {
                         const maskChar = opts?.context?.maskChar || "*";
                         return value.replace(/(?<=.).(?=[^@]*?.@)/g, maskChar);
                     }
@@ -300,7 +304,7 @@ describe("Jsonthis class", () => {
                     node1.next = node2;
 
                     const jsonthis = new Jsonthis({
-                        circularReferenceSerializer: function (_: JsonTraversalState, node: Node) {
+                        circularReferenceSerializer: function (node: Node) {
                             return {"$ref": `$${node.constructor.name}(${node.value})`}
                         }
                     });
@@ -323,13 +327,13 @@ describe("Jsonthis class", () => {
                     node1.next = node2;
 
                     const jsonthis = new Jsonthis({
-                        circularReferenceSerializer: function (_: JsonTraversalState, node: any) {
+                        circularReferenceSerializer: function (node: Node) {
                             return {"$ref": `$${node.constructor.name}(${node.value})`}
                         }
                     });
 
                     // This is a mock of what happens when using Sequelize.
-                    jsonthis.registerGlobalSerializer(Node, (state: JsonTraversalState, node: Node, options?: ToJsonOptions) => {
+                    jsonthis.registerGlobalSerializer(Node, (node: Node, state: JsonTraversalState, options?: ToJsonOptions) => {
                         const data = Object.assign({}, node);
                         const schema = JsonSchema.get(Node);
                         return jsonthis.traverseJson(state, data, schema, options);
