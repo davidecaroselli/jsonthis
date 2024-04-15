@@ -104,9 +104,11 @@ export class Jsonthis {
         if (isNull(target)) return this.options.keepNulls ? null : undefined;
 
         // JsonTraversalState - update visited set
-        if (state.visited.has(target))
-            return this.serializeCircularReference(target, state, options);
-        state.visited.add(target);
+        if (schema !== undefined) {  // only check for circular references for @Json defined classes
+            if (state.visited.has(target))
+                return this.serializeCircularReference(target, state, options);
+            state.visited.add(target);
+        }
         // -----------------------------------
 
         const customSerializer = this.serializers.get(target.constructor);

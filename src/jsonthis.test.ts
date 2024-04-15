@@ -349,6 +349,22 @@ describe("Jsonthis class", () => {
                         }
                     });
                 });
+
+                it("should not throw CircularReferenceError when encountering a duplicated property", () => {
+                    @Json
+                    class User {
+                        public id: number;
+                        public registeredAt: Date;
+                        public updatedAt: Date;
+
+                        constructor(id: number) {
+                            this.id = id;
+                            this.registeredAt = this.updatedAt = new Date();
+                        }
+                    }
+
+                    expect(() => new Jsonthis().toJson(new User(1))).not.toThrow(CircularReferenceError);
+                });
             });
         });
     });
