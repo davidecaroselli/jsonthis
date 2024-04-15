@@ -100,7 +100,7 @@ export class Jsonthis {
         return this.traverseJson(state, target, schema, options);
     }
 
-    traverseJson(state: JsonTraversalState, target: any, schema: JsonSchema | undefined, options?: ToJsonOptions): any {
+    private traverseJson(state: JsonTraversalState, target: any, schema: JsonSchema | undefined, options?: ToJsonOptions): any {
         if (isNull(target)) return this.options.keepNulls ? null : undefined;
 
         // JsonTraversalState - update visited set

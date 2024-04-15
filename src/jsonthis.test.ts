@@ -336,7 +336,7 @@ describe("Jsonthis class", () => {
                     jsonthis.registerGlobalSerializer(Node, (node: Node, state: JsonTraversalState, options?: ToJsonOptions) => {
                         const data = Object.assign({}, node);
                         const schema = JsonSchema.get(Node);
-                        return jsonthis.traverseJson(state, data, schema, options);
+                        return (jsonthis as any).traverseJson(state, data, schema, options);
                     });
 
                     expect(jsonthis.toJson(node1)).toStrictEqual({
