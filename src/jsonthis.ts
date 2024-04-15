@@ -20,6 +20,9 @@ export type JsonthisOptions = {
     circularReferenceSerializer?: JsonFieldFunction<any>; // The custom serializer function for circular references, default it to throw an error.
 }
 
+/**
+ * Options for the toJson() method.
+ */
 export type ToJsonOptions = {
     context?: any; // The user-defined context object to pass to the serializers.
 }
