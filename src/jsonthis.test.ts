@@ -328,6 +328,33 @@ describe("Jsonthis class", () => {
                         }
                     });
                 });
+
+                // circularReferenceSerializer should work also when using custom serializers
+                it("should handle circular references using the provided circularReferenceSerializer with custom serializers", () => {
+                    const node1 = new Node(1);
+                    const node2 = new Node(2);
+                    node2.next = node1;
+                    node1.next = node2;
+
+                    const jsonthis = new Jsonthis({
+                        circularReferenceSerializer: function (node: any) {
+                            return {"$ref": `$${node.constructor.name}(${node.value})`}
+                        }
+                    });
+                    jsonthis.registerGlobalSerializer(Node, function (node: Node) {
+                        return jsonthis.toJson(node);
+                    });
+
+                    expect(jsonthis.toJson(node1)).toStrictEqual({
+                        value: 1,
+                        next: {
+                            value: 2,
+                            next: {
+                                "$ref": "$Node(1)"
+                            }
+                        }
+                    });
+                });
             });
         });
     });
