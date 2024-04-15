@@ -95,12 +95,8 @@ This allows you to dynamically show or hide properties as needed.
 In the following example, the `email` property is only visible if the email owner is requesting it:
 
 ```typescript
-type UserContext = {
-    callerId?: number;
-}
-
-function showEmailOnlyToOwner(/* email */_: string, context?: UserContext, user?: User): boolean {
-    return context?.callerId === user?.id;
+function showEmailOnlyToOwner(/* email */_: string, opts?: ToJsonOptions, user?: User): boolean {
+    return opts?.context?.callerId === user?.id;
 }
 
 @Json
@@ -119,10 +115,10 @@ class User {
 const user = new User(1, "john.doe@gmail.com");
 
 const jsonthis = new Jsonthis();
-console.log(jsonthis.toJson(user, {callerId: 1}));
+console.log(jsonthis.toJson(user, {context: {callerId: 1}}));
 // { id: 1, email: 'john.doe@gmail.com' }
 
-console.log(jsonthis.toJson(user, {callerId: 2}));
+console.log(jsonthis.toJson(user, {context: {callerId: 2}}));
 // { id: 1 }
 ```
 
@@ -133,10 +129,10 @@ const user = new User(1, "john.doe@gmail.com");
 user.friend = new User(2, "jane.doe@gmail.com");
 
 const jsonthis = new Jsonthis();
-console.log(jsonthis.toJson(user, {callerId: 1}));
+console.log(jsonthis.toJson(user, {context: {callerId: 1}}));
 // { id: 1, email: 'john.doe@gmail.com', friend: { id: 2 } }
 
-console.log(jsonthis.toJson(user, {callerId: 2}));
+console.log(jsonthis.toJson(user, {context: {callerId: 2}}));
 // { id: 1, friend: { id: 2, email: 'jane.doe@gmail.com' } }
 ```
 
@@ -223,12 +219,8 @@ Jsonthis serialization supports a user-defined context object that can be used t
 process:
 
 ```typescript
-type MaskOptions = {
-    maskChar?: string;
-}
-
-function maskEmail(value: string, context?: MaskOptions): string {
-    return value.replace(/(?<=.).(?=[^@]*?.@)/g, context?.maskChar || "*");
+function maskEmail(value: string, opts?: ToJsonOptions): string {
+    return value.replace(/(?<=.).(?=[^@]*?.@)/g, opts?.context?.maskChar || "*");
 }
 
 @Json
@@ -240,7 +232,7 @@ class User {
 
 const jsonthis = new Jsonthis();
 const user = new User();
-console.log(jsonthis.toJson(user, {maskChar: "-"}));
+console.log(jsonthis.toJson(user, {context: {maskChar: "-"}}));
 // { id: 1, email: 'j------e@gmail.com' }
 ```
 

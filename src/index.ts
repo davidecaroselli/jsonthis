@@ -8,5 +8,6 @@ export {
 export {
     Jsonthis,
     JsonthisOptions,
+    ToJsonOptions,
     CircularReferenceError
 } from './jsonthis';
