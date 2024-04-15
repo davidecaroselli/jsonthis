@@ -30,6 +30,10 @@ for your data management needs. Explore the [Sequelize support](#sequelize-suppo
     * [Contextual Field-Specific Serializer](#contextual-field-specific-serializer)
 - [Circular References](#circular-references)
 - [Sequelize support](#sequelize-support)
+- [Let's Contribute Together!](#lets-contribute-together)
+    * [How You Can Help](#how-you-can-help)
+    * [Some Tips](#some-tips)
+    * [Got Ideas?](#got-ideas)
 
 ## Getting Started
 
@@ -323,3 +327,28 @@ console.log(user.toJSON());
 //   createdAt: 2024-04-13T18:00:20.909Z
 // }
 ```
+
+## Let's Contribute Together!
+
+I'm excited to have you contribute and share your ideas to make this library even better!
+
+### How You Can Help
+
+1. Fork the repository.
+2. Create a new branch for your changes.
+3. Make your improvements, test them, and commit your work.
+4. Push your branch to your fork.
+5. Send us a pull request!
+
+### Some Tips
+
+- Keep the coding style consistent.
+- Write clear and friendly commit messages.
+- Don't forget tests and documentation!
+- Be kind and respectful in your interactions.
+
+### Got Ideas?
+
+Share your thoughts! I'd love to hear your suggestions. Just open an issue and let's chat!
+
+Thanks a bunch for considering lending a hand! 🌟
