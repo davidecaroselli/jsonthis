@@ -22,6 +22,7 @@ export type JsonthisOptions = {
     case?: "camel" | "snake" | "pascal";  // The case to use for field names, default is to keep field name as is.
     sequelize?: Sequelize; // Install Jsonthis to this Sequelize instance.
     circularReferenceSerializer?: JsonTraversalFn<any>; // The custom serializer function for circular references, default it to throw an error.
+    maxDepth?: number; // The maximum depth to traverse the object, default is unlimited.
 }
 
 /**
@@ -29,6 +30,7 @@ export type JsonthisOptions = {
  */
 export type ToJsonOptions = {
     context?: any; // The user-defined context object to pass to the serializers.
+    maxDepth?: number; // The maximum depth to traverse the object, default is the global maxDepth in JsonthisOptions.
 }
 
 export class CircularReferenceError extends Error {
@@ -148,6 +150,10 @@ export class Jsonthis {
 
         try {
             state.visited.dive();
+
+            const maxDepth = options?.maxDepth || this.options.maxDepth || Infinity;
+            if (state.visited.depth > maxDepth)
+                return undefined;
 
             // Check for circular references
             if (state.visited.visit(value)) {

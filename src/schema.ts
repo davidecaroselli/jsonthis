@@ -28,6 +28,10 @@ export class VisitMap {
     private depths: Array<Map<any, Array<any>>> = [new Map<any, Array<any>>()]
     private currentDepth: number = 0
 
+    public get depth(): number {
+        return this.currentDepth;
+    }
+
     private has(value: any): boolean {
         for (const map of this.depths) {
             const values = map.get(value);
