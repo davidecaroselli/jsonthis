@@ -35,12 +35,6 @@ export class CircularReferenceError extends Error {
     }
 }
 
-function newTraversalState(): JsonTraversalState {
-    return {
-        visited: new Set()
-    };
-}
-
 /**
  * The main class to convert objects to JSON.
  */
@@ -80,91 +74,116 @@ export class Jsonthis {
         }
     }
 
-    private serializeCircularReference(value: any, state: JsonTraversalState, options?: ToJsonOptions): any {
-        if (this.options.circularReferenceSerializer)
-            return this.options.circularReferenceSerializer(value, state, options);
-        throw new CircularReferenceError(value, state);
-    }
-
     /**
      * Convert an object to JSON following the schema defined with Jsonthis decorators.
      * @param target The object to convert.
      * @param options The options for the JSON serialization.
      * @param state The traversal state (useful for chaining toJson() calls in custom serializers).
+     * @param schema The schema to use for the serialization, by default is the schema of the target object computed with JsonSchema.get().
      */
-    toJson(target: any, options?: ToJsonOptions, state?: JsonTraversalState): any {
+    toJson(target: any, options?: ToJsonOptions, state?: JsonTraversalState, schema?: JsonSchema): any {
+        // Special cases (null or array)
         if (isNull(target)) return this.options.keepNulls ? null : undefined;
-        const schema = JsonSchema.get(target.constructor);
+        if (Array.isArray(target)) return target.map(e => this.toJson(e, options, state, schema));
 
-        if (!state) state = newTraversalState();
-        return this.traverseJson(state, target, schema, options);
-    }
+        // Ensure we have a schema and a state
+        if (!schema) schema = JsonSchema.get(target.constructor);
+        if (!state) state = {
+            visited: new Set()
+        };
 
-    private traverseJson(state: JsonTraversalState, target: any, schema: JsonSchema | undefined, options?: ToJsonOptions): any {
-        if (isNull(target)) return this.options.keepNulls ? null : undefined;
-
-        // JsonTraversalState - update visited set
-        if (schema !== undefined) {  // only check for circular references for @Json defined classes
-            if (state.visited.has(target))
-                return this.serializeCircularReference(target, state, options);
+        // If this is the root element, add it to the visited set
+        if (state.visited.size === 0)
             state.visited.add(target);
-        }
-        // -----------------------------------
 
+        // Before traversing the object, check if it has a custom serializer...
         const customSerializer = this.serializers.get(target.constructor);
         if (customSerializer) return evaluateJsonTraversalFn(customSerializer, target, state, options);
 
-        if (schema === undefined) return target;
+        // ...or is a trivial type to serialize
+        const [value, trivial] = this.serializeTrivialValue(target);
+        if (trivial) return value;
 
-        // JsonTraversalState - update parent
+        // Traverse the object
         state.parent = target;
-        // -----------------------------------
 
         const json: { [key: string]: any } = {};
         for (const propertyName in target) {
             if (!Object.hasOwn(target, propertyName)) continue;
 
             const value = target[propertyName];
+            const field: JsonFieldOptions = schema?.definedFields.get(propertyName) || {};
 
-            const fieldOpts: JsonFieldOptions = schema.definedFields.get(propertyName) || {};
-            const visible = evaluateJsonTraversalFn(fieldOpts.visible, value, state, options);
+            // Check if the field is visible
+            const visible = evaluateJsonTraversalFn(field.visible, value, state, options);
             if (visible === false) continue;
 
+            // Begin value serialization
             const key = this.propertyNameToString(propertyName);
+            const serializer = field.serializer || this.serializers.get(value?.constructor)
 
-            if (isNull(value)) {
-                if (!this.options.keepNulls) continue;
-                json[key] = null;
-            } else {
-                const serializer = fieldOpts.serializer;
-
-                if (Array.isArray(value)) {
-                    if (serializer)
-                        json[key] = value.map(e => evaluateJsonTraversalFn(serializer, e, state, options));
-                    else
-                        json[key] = value.map(e => this.traverseJson(state, e, JsonSchema.get(e.constructor), options));
-                } else if (serializer) {
-                    json[key] = evaluateJsonTraversalFn(serializer, value, state, options)
-                } else {
-                    json[key] = this.traverseJson(state, value, JsonSchema.get(value.constructor), options);
-                }
-            }
+            const serializedValue = this.serialize(value, state, serializer, options);
+            if (serializedValue !== undefined)
+                json[key] = serializedValue;
         }
 
         return json;
     }
 
+    private serialize(value: any, state: JsonTraversalState, serializer?: JsonTraversalFn<any>, options?: ToJsonOptions): any {
+        if (isNull(value)) return this.options.keepNulls ? null : undefined;
+        if (Array.isArray(value)) return value.map(e => this.serialize(e, state, serializer, options) || null);
+
+        // Check for circular references
+        // TODO: remove hack on date
+        if (typeof value === "object" && !(value instanceof Date)) {
+            if (state.visited.has(value)) {
+                if (this.options.circularReferenceSerializer)
+                    return this.options.circularReferenceSerializer(value, state);
+                throw new CircularReferenceError(value, state);
+            }
+            state.visited.add(value);
+        }
+
+        if (serializer) return evaluateJsonTraversalFn(serializer, value, state, options);
+
+        const [result, trivial] = this.serializeTrivialValue(value);
+        if (trivial)
+            return result;
+        else
+            return this.toJson(value, options, state!);
+    }
+
+    private serializeTrivialValue(value: any): [any, boolean] {
+        switch (typeof value) {
+            case "object":
+                if ('toJSON' in value && typeof value.toJSON === "function")
+                    return [value, true]
+                else
+                    return [value, false];
+            case "bigint":
+                if (value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER)
+                    return [value.toString(), true];
+                else
+                    return [Number(value), true];
+            case "symbol":
+            case "function":
+                return [undefined, true];
+            case "string":
+            case "number":
+            case "boolean":
+            default:
+                return [value, true];
+        }
+
+    }
+
     private sequelizeInstall(sequelize: Sequelize) {
         for (const model of sequelize.models) {
-            const schema = JsonSchema.getOrCreate(model); // ensure schema is created
-
-            const jsonthis = this;
-            model.prototype.toJSON = function (options?: ToJsonOptions): any {
-                return jsonthis.traverseJson(newTraversalState(), this.get(), schema, options);
-            }
+            const schema = JsonSchema.get(model);
 
             this.registerGlobalSerializer(model, (model: Model, state: JsonTraversalState, options?: ToJsonOptions) => {
-                return jsonthis.traverseJson(state, model.get(), schema, options);
+                return this.toJson(model.get(), options, state, schema);
             });
         }
 

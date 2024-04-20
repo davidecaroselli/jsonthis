@@ -1,5 +1,5 @@
 import {CircularReferenceError, Jsonthis, ToJsonOptions} from "./Jsonthis";
-import {Json, JsonField, JsonSchema, JsonTraversalState} from "./schema";
+import {JsonField, JsonSchema, JsonTraversalState} from "./schema";
 
 describe("Jsonthis class", () => {
     describe("registerGlobalSerializer method", () => {
@@ -8,7 +8,6 @@ describe("Jsonthis class", () => {
         }
 
         it("should register a global serializer for a class", () => {
-            @Json
             class User {
                 public registeredAt: Date = new Date();
             }
@@ -44,8 +43,11 @@ describe("Jsonthis class", () => {
             it("should serialize a number", () => {
                 expect(new Jsonthis().toJson(123)).toBe(123);
             });
-            it("should serialize a BigInt", () => {
-                expect(new Jsonthis().toJson(BigInt(9007199254740991))).toBe(BigInt(9007199254740991));
+            it("should serialize a BigInt (number)", () => {
+                expect(new Jsonthis().toJson(123n)).toBe(123);
+            });
+            it("should serialize a BigInt (unsafe)", () => {
+                expect(new Jsonthis().toJson(9007199254740992n)).toBe("9007199254740992");
             });
             it("should serialize a boolean", () => {
                 expect(new Jsonthis().toJson(true)).toBe(true);
@@ -62,15 +64,15 @@ describe("Jsonthis class", () => {
             });
         });
 
-        describe("with @Json decorated class", () => {
+        describe("with Objects", () => {
             function dateSerializer(value: Date): string {
                 return value.toISOString();
             }
 
-            it("should serialize simple data types in @Json decorated class", () => {
-                @Json
+            it("should serialize simple data types in Object", () => {
                 class User {
-                    id: BigInt = BigInt(123);
+                    id: BigInt = 123n;
+                    serial: BigInt = 9007199254740992n;
                     age: number = 25;
                     name: string = "John";
                     deleted: boolean = false;
@@ -82,7 +84,8 @@ describe("Jsonthis class", () => {
                 const user = new User();
 
                 expect(new Jsonthis().toJson(user)).toStrictEqual({
-                    id: BigInt(123),
+                    id: 123,
+                    serial: "9007199254740992",
                     age: 25,
                     name: "John",
                     deleted: false,
@@ -92,8 +95,7 @@ describe("Jsonthis class", () => {
                 });
             });
 
-            it("should serialize nested @Json decorated class", () => {
-                @Json
+            it("should serialize nested Objects", () => {
                 class User {
                     id: number;
                     name: string;
@@ -174,6 +176,23 @@ describe("Jsonthis class", () => {
             });
 
             describe("with custom serializers", () => {
+                it("should serialize simple data types fields with custom serializer", () => {
+                    function intToHex(value: number): string {
+                        return '0x' + value.toString(16);
+                    }
+
+                    class User {
+                        id: number = 1;
+                        @JsonField({serializer: intToHex})
+                        serial: number = 435297235;
+                    }
+
+                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                        id: 1,
+                        serial: "0x19f21bd3"
+                    });
+                });
+
                 it("should serialize fields with custom serializer", () => {
                     function maskEmail(value: string): string {
                         return value.replace(/(?<=.).(?=[^@]*?.@)/g, "*");
@@ -224,7 +243,6 @@ describe("Jsonthis class", () => {
 
         describe("with options", () => {
             describe("keepNulls option", () => {
-                @Json
                 class User {
                     id: number = 1;
                     name: string | null = null;
@@ -242,7 +260,6 @@ describe("Jsonthis class", () => {
             });
 
             describe("case option", () => {
-                @Json
                 class User {
                     id: number = 1;
                     user_name: string = "john-doe";
@@ -277,7 +294,6 @@ describe("Jsonthis class", () => {
             });
 
             describe("circularReferenceSerializer option", () => {
-                @Json
                 class Node {
                     public value: number;
                     public next?: Node;
@@ -332,11 +348,11 @@ describe("Jsonthis class", () => {
                         }
                     });
 
-                    // This is a mock of what happens when using Sequelize.
+                    // This is the same construct used to support Sequelize models.
                     jsonthis.registerGlobalSerializer(Node, (node: Node, state: JsonTraversalState, options?: ToJsonOptions) => {
                         const data = Object.assign({}, node);
                         const schema = JsonSchema.get(Node);
-                        return (jsonthis as any).traverseJson(state, data, schema, options);
+                        return jsonthis.toJson(data, options, state, schema);
                     });
 
                     expect(jsonthis.toJson(node1)).toStrictEqual({
@@ -351,7 +367,6 @@ describe("Jsonthis class", () => {
                 });
 
                 it("should not throw CircularReferenceError when encountering a duplicated property", () => {
-                    @Json
                     class User {
                         public id: number;
                         public registeredAt: Date;
