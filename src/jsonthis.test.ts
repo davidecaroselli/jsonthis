@@ -577,5 +577,60 @@ describe("Jsonthis class", () => {
                 });
             });
         });
+
+        describe("with maxDepth option", () => {
+            class User {
+                id: number;
+                friend?: User;
+
+                constructor(id: number, friend?: User) {
+                    this.id = id;
+                    if (friend) this.friend = friend;
+                }
+            }
+
+            const user = new User(1, new User(2, new User(3, new User(4))));
+
+            it("should serialize to unlimited depth by default", () => {
+                const jsonthis = new Jsonthis();
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    friend: {
+                        id: 2,
+                        friend: {
+                            id: 3,
+                            friend: {id: 4}
+                        }
+                    }
+                });
+            });
+
+            it("should stop serialization to global maxDepth", () => {
+                const jsonthis = new Jsonthis({maxDepth: 2});
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    friend: {
+                        id: 2,
+                        friend: {id: 3}
+                    }
+                });
+            });
+
+            it("should stop serialization to field's maxDepth", () => {
+                const jsonthis = new Jsonthis();
+                expect(jsonthis.toJson(user, {maxDepth: 1})).toStrictEqual({
+                    id: 1,
+                    friend: {id: 2}
+                });
+            });
+
+            it("should stop serialization to field's maxDepth over global maxDepth", () => {
+                const jsonthis = new Jsonthis({maxDepth: 2});
+                expect(jsonthis.toJson(user, {maxDepth: 1})).toStrictEqual({
+                    id: 1,
+                    friend: {id: 2}
+                });
+            });
+        });
     });
 });
