@@ -1,4 +1,4 @@
-import {Json, JsonField, JsonifiedConstructor, JsonSchema} from "./schema";
+import {JsonField, JsonifiedConstructor, JsonSchema} from "./schema";
 
 describe("JsonSchema class", () => {
     describe("getOrCreate method", () => {
@@ -45,26 +45,9 @@ describe("JsonSchema class", () => {
     });
 });
 
-describe("@Json decorator", () => {
-    it("should create schema for annotated class", () => {
-        @Json
-        class User {
-        }
-
-        const type = (User as unknown) as JsonifiedConstructor;
-        expect(type["__json_schema"]).toBeDefined();
-
-        const schema = JsonSchema.getOrCreate(type);
-        expect(schema).toBeDefined();
-        expect(schema).toBeInstanceOf(JsonSchema);
-        expect(schema.definedFields.size).toBe(0);
-    });
-});
-
 describe("@JsonField decorator", () => {
     describe("with options as boolean", () => {
         it("should set visibility to true when options is true", () => {
-            @Json
             class User {
                 @JsonField(true)
                 public name: string = "John Doe";
@@ -79,7 +62,6 @@ describe("@JsonField decorator", () => {
         });
 
         it("should set visibility to false when options is false", () => {
-            @Json
             class User {
                 @JsonField(false)
                 public name: string = "John Doe";
@@ -98,7 +80,6 @@ describe("@JsonField decorator", () => {
         it("should set visibility and serializer when provided", () => {
             const serializer = (value: any) => value.toString();
 
-            @Json
             class User {
                 @JsonField({visible: false, serializer: serializer})
                 public age: number = 25;
@@ -114,7 +95,6 @@ describe("@JsonField decorator", () => {
         });
 
         it("should set visibility to true and serializer to undefined when not provided", () => {
-            @Json
             class User {
                 @JsonField({})
                 public age: number = 25;
@@ -132,7 +112,6 @@ describe("@JsonField decorator", () => {
         it("should set visibility to function when provided", () => {
             const isVisible = (value: any) => value > 18;
 
-            @Json
             class User {
                 @JsonField({visible: isVisible})
                 public age: number = 25;
@@ -149,7 +128,6 @@ describe("@JsonField decorator", () => {
 
     describe("without options", () => {
         it("should set visibility to true and serializer to undefined", () => {
-            @Json
             class User {
                 @JsonField()
                 public age: number = 25;

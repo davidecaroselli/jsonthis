@@ -1,10 +1,10 @@
 import {ToJsonOptions} from "./jsonthis";
 
 /**
- * Decorator to mark a class as a Jsonthis-serializable class.
+ * @deprecated This decorator is no longer necessary.
  */
 export const Json = function (target: Object): void {
-    JsonSchema.getOrCreate(target);
+    // no-op
 }
 
 /**
