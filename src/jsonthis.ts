@@ -1,11 +1,11 @@
 import {camelCase, pascalCase, snakeCase} from "case-anything";
 import {Model, Sequelize} from "@sequelize/core";
 import {
-    JsonTraversalState,
-    JsonTraversalFn,
+    evaluateJsonTraversalFn,
     JsonFieldOptions,
     JsonSchema,
-    evaluateJsonTraversalFn,
+    JsonTraversalFn,
+    JsonTraversalState,
     VisitMap
 } from "./schema";
 
@@ -141,37 +141,25 @@ export class Jsonthis {
         if (isNull(value)) return this.options.keepNulls ? null : undefined;
         if (Array.isArray(value)) return value.map(e => this.serialize(e, state, serializer, options) || null);
 
-        if (serializer) {
-            // Check for circular references
+        if (!serializer) {
+            const [result, trivial] = this.serializeTrivialValue(value);
+            if (trivial) return result;
+        }
+
+        try {
             state.visited.dive();
 
+            // Check for circular references
             if (state.visited.visit(value)) {
                 if (this.options.circularReferenceSerializer)
                     return this.options.circularReferenceSerializer(value, state);
                 throw new CircularReferenceError(value, state);
             }
 
-            try {
+            if (serializer)
                 return evaluateJsonTraversalFn(serializer, value, state, options);
-            } finally {
-                state.visited.arise();
-            }
-        }
-
-        const [result, trivial] = this.serializeTrivialValue(value);
-        if (trivial) return result;
-
-        // Check for circular references
-        state.visited.dive();
-
-        if (state.visited.visit(value)) {
-            if (this.options.circularReferenceSerializer)
-                return this.options.circularReferenceSerializer(value, state);
-            throw new CircularReferenceError(value, state);
-        }
-
-        try {
-            return this.toJson(value, options, state!);
+            else
+                return this.toJson(value, options, state!);
         } finally {
             state.visited.arise();
         }
