@@ -44,9 +44,8 @@ for your data management needs. Explore the [Sequelize support](#sequelize-suppo
 Getting started with Jsonthis is quick and straightforward. Here's a simple example to get you going:
 
 ```typescript
-import {Json, JsonField, Jsonthis} from "jsonthis";
+import {JsonField, Jsonthis} from "jsonthis";
 
-@Json
 class User {
     id: number;
     email: string;
@@ -78,7 +77,6 @@ You can achieve this by passing `false` to the `@JsonField` decorator directly
 or by using the `JsonFieldOptions` object:
 
 ```typescript
-@Json
 class User {
     // ...
     @JsonField({visible: false})  // This has the same effect as @JsonField(false)
@@ -99,7 +97,6 @@ function showEmailOnlyToOwner(/* email */_: string, state: JsonTraversalState, o
     return opts?.context?.callerId === (state.parent as User)?.id;
 }
 
-@Json
 class User {
     id: number;
     @JsonField({visible: showEmailOnlyToOwner})
@@ -145,7 +142,6 @@ By default, Jsonthis uses whatever casing you use in your TypeScript code,
 but you can change it to `camelCase`, `snake_case`, or `PascalCase`:
 
 ```typescript
-@Json
 class User {
     id: number = 123;
     user_name: string = "john-doe";
@@ -177,7 +173,6 @@ function dateSerializer(value: Date): string {
     return value.toUTCString();
 }
 
-@Json
 class User {
     id: number = 1;
     registeredAt: Date = new Date();
@@ -200,7 +195,6 @@ function maskEmail(value: string): string {
     return value.replace(/(?<=.).(?=[^@]*?.@)/g, "*");
 }
 
-@Json
 class User {
     id: number = 1;
     @JsonField({serializer: maskEmail})
@@ -223,7 +217,6 @@ function maskEmail(value: string, state: JsonTraversalState, opts?: ToJsonOption
     return value.replace(/(?<=.).(?=[^@]*?.@)/g, opts?.context?.maskChar || "*");
 }
 
-@Json
 class User {
     id: number = 1;
     @JsonField({serializer: maskEmail})
@@ -246,7 +239,6 @@ function serializeCircularReference(value: any): any {
     return { $ref: `$${value.constructor.name}(${value.id})` };
 }
 
-@Json
 class User {
     id: number;
     name: string;
