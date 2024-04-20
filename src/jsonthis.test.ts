@@ -1,6 +1,21 @@
 import {CircularReferenceError, Jsonthis, ToJsonOptions} from "./Jsonthis";
 import {JsonField, JsonSchema, JsonTraversalState} from "./schema";
 
+function sequelize(jsonthis: Jsonthis, ...models: any) {
+    for (const model of models) {
+        // This is the same construct used to support Sequelize models.
+        jsonthis.registerGlobalSerializer(model, (value: any, state: JsonTraversalState, options?: ToJsonOptions) => {
+            const data = Object.assign({}, value);
+            const schema = JsonSchema.get(model);
+            return jsonthis.toJson(data, options, state, schema);
+        });
+
+        model.prototype.toJSON = function () {
+            return jsonthis.toJson(this);
+        }
+    }
+}
+
 describe("Jsonthis class", () => {
     describe("registerGlobalSerializer method", () => {
         function dateSerializer(value: Date): string {
@@ -292,27 +307,84 @@ describe("Jsonthis class", () => {
             });
         });
 
+        describe("with context", () => {
+            function contextualMaskEmail(value: string, state: JsonTraversalState, opts?: ToJsonOptions): string {
+                const maskChar = opts?.context?.maskChar || "*";
+                return value.replace(/(?<=.).(?=[^@]*?.@)/g, maskChar);
+            }
+
+            const testCases = [
+                ["simple Objects", false],
+                ["Sequelize models", true],
+            ];
+
+            it.each(testCases)("on %s should serializer using context", (_, withSequelize) => {
+                class User {
+                    id: number;
+                    @JsonField({serializer: contextualMaskEmail})
+                    email: string = "john.doe@gmail.com"
+
+                    constructor(id: number) {
+                        this.id = id;
+                    }
+                }
+
+                const user = new User(1);
+
+                const jsonthis = new Jsonthis();
+                if (withSequelize) sequelize(jsonthis, User);
+
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    email: "j******e@gmail.com"
+                });
+
+                expect(jsonthis.toJson(user, {context: {maskChar: "-"}})).toStrictEqual({
+                    id: 1,
+                    email: "j------e@gmail.com"
+                });
+            });
+
+            it.each(testCases)("on %s should pass context to nested objects", (_, withSequelize) => {
+                class User {
+                    id: number;
+                    @JsonField({serializer: contextualMaskEmail})
+                    email: string
+                    friend?: User;
+
+                    constructor(id: number, email: string) {
+                        this.id = id;
+                        this.email = email;
+                    }
+                }
+
+                const user = new User(1, "john.doe@gmail.com");
+                user.friend = new User(2, "bob.doe@hotmail.com");
+
+                const jsonthis = new Jsonthis();
+                if (withSequelize) sequelize(jsonthis, User);
+
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    email: "j******e@gmail.com",
+                    friend: {
+                        id: 2,
+                        email: "b*****e@hotmail.com"
+                    }
+                });
+
+                expect(jsonthis.toJson(user, {context: {maskChar: "-"}})).toStrictEqual({
+                    id: 1,
+                    email: "j------e@gmail.com",
+                    friend: {
+                        id: 2,
+                        email: "b-----e@hotmail.com"
+                    }
+                });
+            });
+        });
+
         describe("with circular references", () => {
-            class Node {
-                public value: number;
-                public next?: Node;
-
-                constructor(value: number) {
-                    this.value = value;
-                }
-            }
-
-            function sequelize(jsonthis: Jsonthis, ...models: any) {
-                for (const model of models) {
-                    // This is the same construct used to support Sequelize models.
-                    jsonthis.registerGlobalSerializer(model, (value: any, state: JsonTraversalState, options?: ToJsonOptions) => {
-                        const data = Object.assign({}, value);
-                        const schema = JsonSchema.get(model);
-                        return jsonthis.toJson(data, options, state, schema);
-                    });
-                }
-            }
-
             function circularReferenceSerializer(ref: any) {
                 return {"$ref": `$${ref.constructor.name}(${ref.value || ref.id})`}
             }
@@ -325,6 +397,15 @@ describe("Jsonthis class", () => {
             ];
 
             it.each(testCases)("on %s with direct circular reference", (_, withSequelize, withCRSerializer) => {
+                class Node {
+                    public value: number;
+                    public next?: Node;
+
+                    constructor(value: number) {
+                        this.value = value;
+                    }
+                }
+
                 const node = new Node(1);
                 node.next = new Node(2);
                 node.next.next = node;
@@ -348,6 +429,15 @@ describe("Jsonthis class", () => {
             });
 
             it.each(testCases)("on %s with nested circular reference", (_, withSequelize, withCRSerializer) => {
+                class Node {
+                    public value: number;
+                    public next?: Node;
+
+                    constructor(value: number) {
+                        this.value = value;
+                    }
+                }
+
                 const node = new Node(1);
                 node.next = new Node(2);
                 node.next.next = new Node(3);
