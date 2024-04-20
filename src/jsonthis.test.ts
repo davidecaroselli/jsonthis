@@ -241,144 +241,256 @@ describe("Jsonthis class", () => {
             });
         });
 
-        describe("with options", () => {
-            describe("keepNulls option", () => {
-                class User {
-                    id: number = 1;
-                    name: string | null = null;
-                }
+        describe("with keepNulls option", () => {
+            class User {
+                id: number = 1;
+                name: string | null = null;
+            }
 
-                it("should serialize null values when keepNulls is true", () => {
-                    const jsonthis = new Jsonthis({keepNulls: true});
-                    expect(jsonthis.toJson(new User())).toStrictEqual({id: 1, name: null});
-                });
+            it("should serialize null values when keepNulls is true", () => {
+                const jsonthis = new Jsonthis({keepNulls: true});
+                expect(jsonthis.toJson(new User())).toStrictEqual({id: 1, name: null});
+            });
 
-                it("should skip null values when keepNulls is false", () => {
-                    const jsonthis = new Jsonthis({keepNulls: false});
-                    expect(jsonthis.toJson(new User())).toStrictEqual({id: 1});
+            it("should skip null values when keepNulls is false", () => {
+                const jsonthis = new Jsonthis({keepNulls: false});
+                expect(jsonthis.toJson(new User())).toStrictEqual({id: 1});
+            });
+        });
+
+        describe("with case option", () => {
+            class User {
+                id: number = 1;
+                user_name: string = "john-doe";
+                registeredAt: Date = new Date();
+            }
+
+            const user = new User();
+
+            it("should serialize with camel casing", () => {
+                expect(new Jsonthis({case: "camel"}).toJson(user)).toStrictEqual({
+                    id: 1,
+                    userName: "john-doe",
+                    registeredAt: user.registeredAt
                 });
             });
 
-            describe("case option", () => {
-                class User {
-                    id: number = 1;
-                    user_name: string = "john-doe";
-                    registeredAt: Date = new Date();
-                }
-
-                const user = new User();
-
-                it("should serialize with camel casing", () => {
-                    expect(new Jsonthis({case: "camel"}).toJson(user)).toStrictEqual({
-                        id: 1,
-                        userName: "john-doe",
-                        registeredAt: user.registeredAt
-                    });
-                });
-
-                it("should serialize with snake casing", () => {
-                    expect(new Jsonthis({case: "snake"}).toJson(user)).toStrictEqual({
-                        id: 1,
-                        user_name: "john-doe",
-                        registered_at: user.registeredAt
-                    });
-                });
-
-                it("should serialize with pascal casing", () => {
-                    expect(new Jsonthis({case: "pascal"}).toJson(user)).toStrictEqual({
-                        Id: 1,
-                        UserName: "john-doe",
-                        RegisteredAt: user.registeredAt
-                    });
+            it("should serialize with snake casing", () => {
+                expect(new Jsonthis({case: "snake"}).toJson(user)).toStrictEqual({
+                    id: 1,
+                    user_name: "john-doe",
+                    registered_at: user.registeredAt
                 });
             });
 
-            describe("circularReferenceSerializer option", () => {
-                class Node {
-                    public value: number;
-                    public next?: Node;
+            it("should serialize with pascal casing", () => {
+                expect(new Jsonthis({case: "pascal"}).toJson(user)).toStrictEqual({
+                    Id: 1,
+                    UserName: "john-doe",
+                    RegisteredAt: user.registeredAt
+                });
+            });
+        });
 
-                    constructor(value: number) {
-                        this.value = value;
-                    }
+        describe("with circular references", () => {
+            class Node {
+                public value: number;
+                public next?: Node;
+
+                constructor(value: number) {
+                    this.value = value;
                 }
+            }
 
-                it("should throw an error when encountering a circular reference without a circularReferenceSerializer", () => {
-                    const node1 = new Node(1);
-                    const node2 = new Node(2);
-                    node2.next = node1;
-                    node1.next = node2;
-
-                    const jsonthis = new Jsonthis();
-                    expect(() => jsonthis.toJson(node1)).toThrow(CircularReferenceError);
-                });
-
-                it("should handle circular references using the provided circularReferenceSerializer", () => {
-                    const node1 = new Node(1);
-                    const node2 = new Node(2);
-                    node2.next = node1;
-                    node1.next = node2;
-
-                    const jsonthis = new Jsonthis({
-                        circularReferenceSerializer: function (node: Node) {
-                            return {"$ref": `$${node.constructor.name}(${node.value})`}
-                        }
-                    });
-
-                    expect(jsonthis.toJson(node1)).toStrictEqual({
-                        value: 1,
-                        next: {
-                            value: 2,
-                            next: {
-                                "$ref": "$Node(1)"
-                            }
-                        }
-                    });
-                });
-
-                it("should handle circular references using the provided circularReferenceSerializer with Sequelize integration", () => {
-                    const node1 = new Node(1);
-                    const node2 = new Node(2);
-                    node2.next = node1;
-                    node1.next = node2;
-
-                    const jsonthis = new Jsonthis({
-                        circularReferenceSerializer: function (node: Node) {
-                            return {"$ref": `$${node.constructor.name}(${node.value})`}
-                        }
-                    });
-
+            function sequelize(jsonthis: Jsonthis, ...models: any) {
+                for (const model of models) {
                     // This is the same construct used to support Sequelize models.
-                    jsonthis.registerGlobalSerializer(Node, (node: Node, state: JsonTraversalState, options?: ToJsonOptions) => {
-                        const data = Object.assign({}, node);
-                        const schema = JsonSchema.get(Node);
+                    jsonthis.registerGlobalSerializer(model, (value: any, state: JsonTraversalState, options?: ToJsonOptions) => {
+                        const data = Object.assign({}, value);
+                        const schema = JsonSchema.get(model);
                         return jsonthis.toJson(data, options, state, schema);
                     });
+                }
+            }
 
-                    expect(jsonthis.toJson(node1)).toStrictEqual({
-                        value: 1,
-                        next: {
-                            value: 2,
-                            next: {
-                                "$ref": "$Node(1)"
-                            }
-                        }
-                    });
+            it.each([
+                ["simple Objects", false],
+                ["Sequelize models", true]
+            ])("should throw an error when encountering a circular reference on %s", (_, withSequelize) => {
+                const node = new Node(1);
+                node.next = new Node(2);
+                node.next.next = node;
+
+                const jsonthis = new Jsonthis();
+                if (withSequelize) sequelize(jsonthis, Node);
+
+                expect(() => jsonthis.toJson(node)).toThrow(CircularReferenceError);
+            });
+
+            it.each([
+                ["simple Objects", false],
+                ["Sequelize models", true]
+            ])("should throw an error when encountering a nested circular reference on %s", (_, withSequelize) => {
+                const node = new Node(1);
+                node.next = new Node(2);
+                node.next.next = new Node(3);
+                node.next.next.next = node;
+
+                const jsonthis = new Jsonthis();
+                if (withSequelize) sequelize(jsonthis, Node);
+
+                expect(() => jsonthis.toJson(node)).toThrow(CircularReferenceError);
+            });
+
+            it.each([
+                ["simple Objects", false],
+                ["Sequelize models", true]
+            ])("should handle circular references using the provided circularReferenceSerializer on %s", (_, withSequelize) => {
+                const node = new Node(1);
+                node.next = new Node(2);
+                node.next.next = node;
+
+                const jsonthis = new Jsonthis({
+                    circularReferenceSerializer: function (node: Node) {
+                        return {"$ref": `$${node.constructor.name}(${node.value})`}
+                    }
                 });
+                if (withSequelize) sequelize(jsonthis, Node);
 
-                it("should not throw CircularReferenceError when encountering a duplicated property", () => {
-                    class User {
-                        public id: number;
-                        public registeredAt: Date;
-                        public updatedAt: Date;
-
-                        constructor(id: number) {
-                            this.id = id;
-                            this.registeredAt = this.updatedAt = new Date();
+                expect(jsonthis.toJson(node)).toStrictEqual({
+                    value: 1,
+                    next: {
+                        value: 2,
+                        next: {
+                            "$ref": "$Node(1)"
                         }
                     }
+                });
+            });
 
-                    expect(() => new Jsonthis().toJson(new User(1))).not.toThrow(CircularReferenceError);
+            it.each([
+                ["simple Objects", false],
+                ["Sequelize models", true]
+            ])("should not throw CircularReferenceError encountering a nested duplicated property on %s", (_, withSequelize) => {
+                const date = new Date();
+
+                class User {
+                    public id: number;
+                    public registeredAt: Date;
+                    public friend?: User;
+
+                    constructor(id: number, date: Date) {
+                        this.id = id;
+                        this.registeredAt = date;
+                    }
+                }
+
+                const user = new User(1, date);
+                user.friend = new User(2, date);
+
+                const jsonthis = new Jsonthis();
+                if (withSequelize) sequelize(jsonthis, User);
+
+                expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    registeredAt: date,
+                    friend: {
+                        id: 2,
+                        registeredAt: date
+                    }
+                });
+            });
+
+            it.each([
+                ["simple Objects", false],
+                ["Sequelize models", true]
+            ])("should not throw CircularReferenceError encountering a duplicated property on %s", (_, withSequelize) => {
+                class User {
+                    public id: number;
+                    public registeredAt: Date;
+                    public updatedAt: Date;
+
+                    constructor(id: number) {
+                        this.id = id;
+                        this.registeredAt = this.updatedAt = new Date();
+                    }
+                }
+
+                const user = new User(1);
+
+                const jsonthis = new Jsonthis();
+                if (withSequelize) sequelize(jsonthis, User);
+
+                expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    registeredAt: user.registeredAt,
+                    updatedAt: user.updatedAt
+                });
+            });
+
+            it.each([
+                ["simple Objects", false],
+                ["Sequelize models", true]
+            ])("should not throw CircularReferenceError encountering a Object referenced twice on %s", (_, withSequelize) => {
+                class User {
+                    public id: number;
+                    public roommate?: User;
+                    public friend?: User;
+
+                    constructor(id: number) {
+                        this.id = id;
+                    }
+                }
+
+                const user = new User(1);
+                user.roommate = user.friend = new User(2);
+
+                const jsonthis = new Jsonthis();
+                if (withSequelize) sequelize(jsonthis, User);
+
+                expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    roommate: {id: 2},
+                    friend: {id: 2}
+                });
+            });
+
+            it.each([
+                ["simple Objects", false],
+                ["Sequelize models", true]
+            ])("should not throw CircularReferenceError encountering a Object referenced twice in different trees on %s", (_, withSequelize) => {
+                class User {
+                    public id: number;
+                    public roommate?: User;
+                    public friend?: User;
+
+                    constructor(id: number) {
+                        this.id = id;
+                    }
+                }
+
+                const user = new User(1);
+                user.roommate = new User(2);
+                user.friend = new User(3);
+                user.roommate.friend = user.friend.friend = new User(4);
+
+                const jsonthis = new Jsonthis();
+                if (withSequelize) sequelize(jsonthis, User);
+
+                expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
+                expect(jsonthis.toJson(user)).toStrictEqual({
+                    id: 1,
+                    roommate: {
+                        id: 2,
+                        friend: {id: 4}
+                    },
+                    friend: {
+                        id: 3,
+                        friend: {id: 4}
+                    }
                 });
             });
         });

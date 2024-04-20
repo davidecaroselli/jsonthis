@@ -24,13 +24,66 @@ export const JsonField = function (options?: boolean | JsonFieldOptions): Functi
     }
 }
 
+export class VisitMap {
+    private depths: Array<Map<any, Array<any>>> = [new Map<any, Array<any>>()]
+    private currentDepth: number = 0
+
+    private has(value: any): boolean {
+        for (const map of this.depths) {
+            const values = map.get(value);
+            if (values === undefined) continue;
+            for (const v of values)
+                if (v === value) return true;
+        }
+
+        return false;
+    }
+
+    private add(value: any): void {
+        const map = this.depths[this.currentDepth];
+        let values = map.get(value);
+        if (values === undefined) {
+            values = [];
+            map.set(value, values);
+        }
+        values.push(value);
+    }
+
+    // Go down a level in the depth
+    public dive(): void {
+        this.depths.push(new Map<any, Array<any>>());
+        this.currentDepth++;
+    }
+
+    // Go up a level in the depth
+    public arise(): void {
+        this.depths.pop();
+        this.currentDepth--;
+    }
+
+    /**
+     * Visit a value and return whether it has been visited before.
+     * @param value
+     */
+    public visit(value: any): boolean {
+        if (typeof value === "object") {
+            if (this.has(value))
+                return true;
+
+            this.add(value);
+        }
+
+        return false;
+    }
+}
+
 /**
  * A state object is carried through the traversal of the JSON object and can be used to store stateful information.
  * (This can be used to detect circular references, for example.)
  */
 export type JsonTraversalState = {
     parent?: any;
-    visited: Set<any>;
+    visited: VisitMap;
 }
 
 export type SimpleJsonTraversalFn<R> = (value: any) => R;

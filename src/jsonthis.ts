@@ -1,6 +1,13 @@
 import {camelCase, pascalCase, snakeCase} from "case-anything";
 import {Model, Sequelize} from "@sequelize/core";
-import {JsonTraversalState, JsonTraversalFn, JsonFieldOptions, JsonSchema, evaluateJsonTraversalFn} from "./schema";
+import {
+    JsonTraversalState,
+    JsonTraversalFn,
+    JsonFieldOptions,
+    JsonSchema,
+    evaluateJsonTraversalFn,
+    VisitMap
+} from "./schema";
 
 
 function isNull(value: any): boolean {
@@ -89,12 +96,12 @@ export class Jsonthis {
         // Ensure we have a schema and a state
         if (!schema) schema = JsonSchema.get(target.constructor);
         if (!state) state = {
-            visited: new Set()
-        };
+            visited: new VisitMap(),
+        }
 
         // If this is the root element, add it to the visited set
-        if (state.visited.size === 0)
-            state.visited.add(target);
+        if (!state.parent)
+            state.visited.visit(target);
 
         // Before traversing the object, check if it has a custom serializer...
         const customSerializer = this.serializers.get(target.constructor);
@@ -134,24 +141,40 @@ export class Jsonthis {
         if (isNull(value)) return this.options.keepNulls ? null : undefined;
         if (Array.isArray(value)) return value.map(e => this.serialize(e, state, serializer, options) || null);
 
-        // Check for circular references
-        // TODO: remove hack on date
-        if (typeof value === "object" && !(value instanceof Date)) {
-            if (state.visited.has(value)) {
+        if (serializer) {
+            // Check for circular references
+            state.visited.dive();
+
+            if (state.visited.visit(value)) {
                 if (this.options.circularReferenceSerializer)
                     return this.options.circularReferenceSerializer(value, state);
                 throw new CircularReferenceError(value, state);
             }
-            state.visited.add(value);
+
+            try {
+                return evaluateJsonTraversalFn(serializer, value, state, options);
+            } finally {
+                state.visited.arise();
+            }
         }
 
-        if (serializer) return evaluateJsonTraversalFn(serializer, value, state, options);
-
         const [result, trivial] = this.serializeTrivialValue(value);
-        if (trivial)
-            return result;
-        else
+        if (trivial) return result;
+
+        // Check for circular references
+        state.visited.dive();
+
+        if (state.visited.visit(value)) {
+            if (this.options.circularReferenceSerializer)
+                return this.options.circularReferenceSerializer(value, state);
+            throw new CircularReferenceError(value, state);
+        }
+
+        try {
             return this.toJson(value, options, state!);
+        } finally {
+            state.visited.arise();
+        }
     }
 
     private serializeTrivialValue(value: any): [any, boolean] {
