@@ -299,7 +299,7 @@ export class User extends Model<InferAttributes<User>, InferCreationAttributes<U
     declare password: string;
 }
 
-const jsonthis = new Jsonthis({sequelize});
+const jsonthis = new Jsonthis({case: "snake", sequelize});
 
 const user = await User.create({
     id: 1,
@@ -307,12 +307,12 @@ const user = await User.create({
     password: "s3cret"
 });
 
-console.log(user.toJSON());
+console.log(user.toJSON());  // or jsonthis.toJson(user)
 // {
 //   id: 1,
 //   email: 'j******e@gmail.com',
-//   updatedAt: 2024-04-13T18:00:20.909Z,
-//   createdAt: 2024-04-13T18:00:20.909Z
+//   updated_at: 2024-04-20T12:58:10.229Z,
+//   created_at: 2024-04-20T12:58:10.229Z
 // }
 ```
 

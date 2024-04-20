@@ -196,6 +196,11 @@ export class Jsonthis {
             this.registerGlobalSerializer(model, (model: Model, state: JsonTraversalState, options?: ToJsonOptions) => {
                 return this.toJson(model.get(), options, state, schema);
             });
+
+            const jsonthis = this;
+            model.prototype.toJSON = function () {
+                return jsonthis.toJson(this);
+            }
         }
 
     }
