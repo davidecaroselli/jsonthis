@@ -57,6 +57,7 @@ describe("Jsonthis class", () => {
             class User {
                 public registeredAt: Date = new Date();
             }
+
             const user = new User();
 
             const jsonthis = new Jsonthis();
@@ -654,6 +655,39 @@ describe("Jsonthis class", () => {
                     friend: {id: 2}
                 });
             });
+        });
+    });
+
+    describe("Javascript JSON.stringify() compatibility", () => {
+        it("should default-serialize a non-Jsonthis model", () => {
+            class User {
+                id: number = 1;
+                userName: string = "john-doe";
+                @JsonField(false)
+                password: string = "s3cret";
+            }
+
+            new Jsonthis({case: "snake"});  // This should have no effect
+
+            expect(JSON.stringify(new User())).toStrictEqual(
+                '{"id":1,"userName":"john-doe","password":"s3cret"}');
+        });
+
+        it("should use Jsonthis serialization when a Jsonthis model is passed", () => {
+            class User {
+                id: number = 1;
+                userName: string = "john-doe";
+                @JsonField(false)
+                password: string = "s3cret";
+            }
+
+            new Jsonthis({
+                case: "snake",
+                models: [User]
+            });
+
+            expect(JSON.stringify(new User())).toStrictEqual(
+                '{"id":1,"user_name":"john-doe"}');
         });
     });
 });
