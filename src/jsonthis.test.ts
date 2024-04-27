@@ -3,103 +3,91 @@ import {JsonField, JsonSchema, JsonTraversalState} from "./schema";
 
 function sequelize(jsonthis: Jsonthis, ...models: any) {
     for (const model of models) {
-        // This is the same construct used to support Sequelize models.
-        jsonthis.registerGlobalSerializer(model, (value: any, state: JsonTraversalState, options?: ToJsonOptions) => {
-            const data = Object.assign({}, value);
-            const schema = JsonSchema.get(model);
-            return jsonthis.toJson(data, options, state, schema);
-        });
-
-        model.prototype.toJSON = function () {
-            return jsonthis.toJson(this);
+        // Define get() function used in sequelizeInstall()
+        model.prototype.get = function () {
+            return Object.assign({}, this);
         }
     }
+    (jsonthis as any).sequelizeInstall(models);
+}
+
+type ToJsonFn = (jsonthis: Jsonthis, value: any, options?: ToJsonOptions) => any;
+
+const Jsonthis_toJson: ToJsonFn = function (jsonthis: Jsonthis, value: any, options?: ToJsonOptions): any {
+    return jsonthis.toJson(value, options);
+}
+
+const model_toJSON: ToJsonFn = function (jsonthis: Jsonthis, value: any, options?: ToJsonOptions): any {
+    return value.toJSON(options);
 }
 
 describe("Jsonthis class", () => {
-    describe("registerGlobalSerializer method", () => {
-        function dateSerializer(value: Date): string {
-            return value.toISOString();
+    it("should create schema for model classes", () => {
+        class User {
         }
 
-        it("should register a global serializer for a class", () => {
-            class User {
-                public registeredAt: Date = new Date();
-            }
-
-            const user = new User();
-
-            expect(new Jsonthis({models: [User]}).toJson(user)).toStrictEqual({
-                registeredAt: user.registeredAt
-            });
-
-            const jsonthis = new Jsonthis({models: [User]});
-            jsonthis.registerGlobalSerializer(Date, dateSerializer);
-
-            expect(jsonthis.toJson(user)).toStrictEqual({
-                registeredAt: user.registeredAt.toISOString()
-            });
-        });
-
-        it("should throw an error when trying to register a serializer for a class that already has one", () => {
-            const jsonthis = new Jsonthis();
-            jsonthis.registerGlobalSerializer(Date, dateSerializer);
-
-            expect(() => jsonthis.registerGlobalSerializer(Date, dateSerializer))
-                .toThrow("Serializer already registered for \"Date\"");
-        });
-
-        it("should override a global serializer for a class if the override option is set", () => {
-            function overridingDateSerializer(value: Date): string {
-                return value.toUTCString();
-            }
-
-            class User {
-                public registeredAt: Date = new Date();
-            }
-
-            const user = new User();
-
-            const jsonthis = new Jsonthis({models: [User]});
-
-            jsonthis.registerGlobalSerializer(Date, dateSerializer);
-            expect(jsonthis.toJson(user)).toStrictEqual({
-                registeredAt: user.registeredAt.toISOString()
-            });
-
-            jsonthis.registerGlobalSerializer(Date, overridingDateSerializer, true);
-            expect(jsonthis.toJson(user)).toStrictEqual({
-                registeredAt: user.registeredAt.toUTCString()
-            });
-        });
+        const jsonthis = new Jsonthis({models: [User]});
+        expect(JsonSchema.isPresent(User)).toBeTruthy();
     });
 
-    describe("toJson method", () => {
-        describe("with simple data types", () => {
-            it("should serialize a string", () => {
-                expect(new Jsonthis().toJson("hello word")).toBe("hello word");
+    describe.each([
+        ["Jsonthis.toJson()", Jsonthis_toJson],
+        ["Model.toJSON()", model_toJSON]
+    ])("%s method", (_, toJson: ToJsonFn) => {
+        describe("with global serializer", () => {
+            function dateSerializer(value: Date): string {
+                return value.toISOString();
+            }
+
+            it("should register a global serializer for a class", () => {
+                class User {
+                    public registeredAt: Date = new Date();
+                }
+
+                const user = new User();
+
+                expect(toJson(new Jsonthis({models: [User]}), user)).toStrictEqual({
+                    registeredAt: user.registeredAt
+                });
+
+                const jsonthis = new Jsonthis({models: [User]});
+                jsonthis.registerGlobalSerializer(Date, dateSerializer);
+
+                expect(toJson(jsonthis, user)).toStrictEqual({
+                    registeredAt: user.registeredAt.toISOString()
+                });
             });
-            it("should serialize a number", () => {
-                expect(new Jsonthis().toJson(123)).toBe(123);
+
+            it("should throw an error when trying to register a serializer for a class that already has one", () => {
+                const jsonthis = new Jsonthis();
+                jsonthis.registerGlobalSerializer(Date, dateSerializer);
+
+                expect(() => jsonthis.registerGlobalSerializer(Date, dateSerializer))
+                    .toThrow("Serializer already registered for \"Date\"");
             });
-            it("should serialize a BigInt (number)", () => {
-                expect(new Jsonthis().toJson(123n)).toBe(123);
-            });
-            it("should serialize a BigInt (unsafe)", () => {
-                expect(new Jsonthis().toJson(9007199254740992n)).toBe("9007199254740992");
-            });
-            it("should serialize a boolean", () => {
-                expect(new Jsonthis().toJson(true)).toBe(true);
-            });
-            it("should serialize a Date", () => {
-                const date = new Date();
-                expect(new Jsonthis().toJson(date)).toBe(date);
-            });
-            it("should serialize an object", () => {
-                expect(new Jsonthis().toJson({value: 123})).toStrictEqual({value: 123});
-            });
-            it("should serialize an array", () => {
-                expect(new Jsonthis().toJson([1, "hello"])).toStrictEqual([1, "hello"]);
+
+            it("should override a global serializer for a class if the override option is set", () => {
+                function overridingDateSerializer(value: Date): string {
+                    return value.toUTCString();
+                }
+
+                class User {
+                    public registeredAt: Date = new Date();
+                }
+
+                const user = new User();
+
+                const jsonthis = new Jsonthis({models: [User]});
+
+                jsonthis.registerGlobalSerializer(Date, dateSerializer);
+                expect(toJson(jsonthis, user)).toStrictEqual({
+                    registeredAt: user.registeredAt.toISOString()
+                });
+
+                jsonthis.registerGlobalSerializer(Date, overridingDateSerializer, true);
+                expect(toJson(jsonthis, user)).toStrictEqual({
+                    registeredAt: user.registeredAt.toUTCString()
+                });
             });
         });
 
@@ -122,7 +110,7 @@ describe("Jsonthis class", () => {
 
                 const user = new User();
 
-                expect(new Jsonthis({models: [User]}).toJson(user)).toStrictEqual({
+                expect(toJson(new Jsonthis({models: [User]}), user)).toStrictEqual({
                     id: 123,
                     serial: "9007199254740992",
                     age: 25,
@@ -153,7 +141,7 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis({models: [User]});
                 jsonthis.registerGlobalSerializer(Date, dateSerializer);
 
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     name: "John",
                     registeredAt: user.registeredAt.toISOString(),
@@ -175,7 +163,7 @@ describe("Jsonthis class", () => {
                         name: string = "John";
                     }
 
-                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
+                    expect(toJson(new Jsonthis({models: [User]}), new User())).toStrictEqual({
                         id: 123,
                         name: "John"
                     });
@@ -188,7 +176,7 @@ describe("Jsonthis class", () => {
                         password: string = "s3cret";
                     }
 
-                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
+                    expect(toJson(new Jsonthis({models: [User]}), new User())).toStrictEqual({
                         id: 123
                     });
                 });
@@ -204,11 +192,11 @@ describe("Jsonthis class", () => {
                         email: string = "john.doe@gmail.com";
                     }
 
-                    expect(new Jsonthis({models: [User]}).toJson(new User(), {context: {callerId: 1}})).toStrictEqual({
+                    expect(toJson(new Jsonthis({models: [User]}), new User(), {context: {callerId: 1}})).toStrictEqual({
                         id: 1,
                         email: "john.doe@gmail.com"
                     });
-                    expect(new Jsonthis({models: [User]}).toJson(new User(), {context: {callerId: 2}})).toStrictEqual({
+                    expect(toJson(new Jsonthis({models: [User]}), new User(), {context: {callerId: 2}})).toStrictEqual({
                         id: 1
                     });
                 });
@@ -226,7 +214,7 @@ describe("Jsonthis class", () => {
                         serial: number = 435297235;
                     }
 
-                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
+                    expect(toJson(new Jsonthis({models: [User]}), new User())).toStrictEqual({
                         id: 1,
                         serial: "0x19f21bd3"
                     });
@@ -245,7 +233,7 @@ describe("Jsonthis class", () => {
                         aliases: string[] = ["john.doe-1@gmail.com", "john.doe-2@hotmail.com"];
                     }
 
-                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
+                    expect(toJson(new Jsonthis({models: [User]}), new User())).toStrictEqual({
                         id: 1,
                         email: "j******e@gmail.com",
                         aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
@@ -266,12 +254,12 @@ describe("Jsonthis class", () => {
                         aliases: string[] = ["john.doe-1@gmail.com", "john.doe-2@hotmail.com"];
                     }
 
-                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
+                    expect(toJson(new Jsonthis({models: [User]}), new User())).toStrictEqual({
                         id: 1,
                         email: "j******e@gmail.com",
                         aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
                     });
-                    expect(new Jsonthis({models: [User]}).toJson(new User(), {context: {maskChar: "-"}})).toStrictEqual({
+                    expect(toJson(new Jsonthis({models: [User]}), new User(), {context: {maskChar: "-"}})).toStrictEqual({
                         id: 1,
                         email: "j------e@gmail.com",
                         aliases: ["j--------1@gmail.com", "j--------2@hotmail.com"]
@@ -288,12 +276,12 @@ describe("Jsonthis class", () => {
 
             it("should serialize null values when keepNulls is true", () => {
                 const jsonthis = new Jsonthis({keepNulls: true, models: [User]});
-                expect(jsonthis.toJson(new User())).toStrictEqual({id: 1, name: null});
+                expect(toJson(jsonthis, new User())).toStrictEqual({id: 1, name: null});
             });
 
             it("should skip null values when keepNulls is false", () => {
                 const jsonthis = new Jsonthis({keepNulls: false, models: [User]});
-                expect(jsonthis.toJson(new User())).toStrictEqual({id: 1});
+                expect(toJson(jsonthis, new User())).toStrictEqual({id: 1});
             });
         });
 
@@ -307,7 +295,7 @@ describe("Jsonthis class", () => {
             const user = new User();
 
             it("should serialize with camel casing", () => {
-                expect(new Jsonthis({case: "camel", models: [User]}).toJson(user)).toStrictEqual({
+                expect(toJson(new Jsonthis({case: "camel", models: [User]}), user)).toStrictEqual({
                     id: 1,
                     userName: "john-doe",
                     registeredAt: user.registeredAt
@@ -315,7 +303,7 @@ describe("Jsonthis class", () => {
             });
 
             it("should serialize with snake casing", () => {
-                expect(new Jsonthis({case: "snake", models: [User]}).toJson(user)).toStrictEqual({
+                expect(toJson(new Jsonthis({case: "snake", models: [User]}), user)).toStrictEqual({
                     id: 1,
                     user_name: "john-doe",
                     registered_at: user.registeredAt
@@ -323,7 +311,7 @@ describe("Jsonthis class", () => {
             });
 
             it("should serialize with pascal casing", () => {
-                expect(new Jsonthis({case: "pascal", models: [User]}).toJson(user)).toStrictEqual({
+                expect(toJson(new Jsonthis({case: "pascal", models: [User]}), user)).toStrictEqual({
                     Id: 1,
                     UserName: "john-doe",
                     RegisteredAt: user.registeredAt
@@ -331,18 +319,16 @@ describe("Jsonthis class", () => {
             });
         });
 
-        describe("with context", () => {
+        describe.each([
+            ["simple Objects", false],
+            ["Sequelize models", true]
+        ])("with context on %s", (_, withSequelize) => {
             function contextualMaskEmail(value: string, state: JsonTraversalState, opts?: ToJsonOptions): string {
                 const maskChar = opts?.context?.maskChar || "*";
                 return value.replace(/(?<=.).(?=[^@]*?.@)/g, maskChar);
             }
 
-            const testCases = [
-                ["simple Objects", false],
-                ["Sequelize models", true],
-            ];
-
-            it.each(testCases)("on %s should serializer using context", (_, withSequelize) => {
+            it("should serializer using context", () => {
                 class User {
                     id: number;
                     @JsonField({serializer: contextualMaskEmail})
@@ -358,18 +344,18 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis({models: [User]});
                 if (withSequelize) sequelize(jsonthis, User);
 
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     email: "j******e@gmail.com"
                 });
 
-                expect(jsonthis.toJson(user, {context: {maskChar: "-"}})).toStrictEqual({
+                expect(toJson(jsonthis, user, {context: {maskChar: "-"}})).toStrictEqual({
                     id: 1,
                     email: "j------e@gmail.com"
                 });
             });
 
-            it.each(testCases)("on %s should pass context to nested objects", (_, withSequelize) => {
+            it("should pass context to nested objects", () => {
                 class User {
                     id: number;
                     @JsonField({serializer: contextualMaskEmail})
@@ -388,7 +374,7 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis({models: [User]});
                 if (withSequelize) sequelize(jsonthis, User);
 
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     email: "j******e@gmail.com",
                     friend: {
@@ -397,7 +383,7 @@ describe("Jsonthis class", () => {
                     }
                 });
 
-                expect(jsonthis.toJson(user, {context: {maskChar: "-"}})).toStrictEqual({
+                expect(toJson(jsonthis, user, {context: {maskChar: "-"}})).toStrictEqual({
                     id: 1,
                     email: "j------e@gmail.com",
                     friend: {
@@ -408,29 +394,23 @@ describe("Jsonthis class", () => {
             });
         });
 
-        describe("with circular references", () => {
+        describe.each([
+            ["simple Objects", false, false],
+            ["simple Objects and custom C-REF serializer", false, true],
+            ["Sequelize models", true, false],
+            ["Sequelize models and custom C-REF serializer", true, true]
+        ])("with circular references on %s", (_, withSequelize, withCRSerializer) => {
             function circularReferenceSerializer(ref: any) {
                 return {"$ref": `$${ref.constructor.name}(${ref.value || ref.id})`}
             }
 
-            const testCases = [
-                ["simple Objects", false, false],
-                ["simple Objects and custom C-REF serializer", false, true],
-                ["Sequelize models", true, false],
-                ["Sequelize models and custom C-REF serializer", true, true]
-            ];
-
-            it.each(testCases)("on %s with direct circular reference", (_, withSequelize, withCRSerializer) => {
+            it("with direct circular reference", () => {
                 class Node {
                     public value: number;
                     public next?: Node;
 
                     constructor(value: number) {
                         this.value = value;
-                    }
-
-                    toJSON(): any {
-                        throw new Error("Should not be called");
                     }
                 }
 
@@ -442,34 +422,27 @@ describe("Jsonthis class", () => {
                 if (withSequelize) sequelize(jsonthis, Node);
 
                 if (withCRSerializer) {
-                    const expected = {
+                    expect(() => toJson(jsonthis, node)).not.toThrow(CircularReferenceError);
+                    expect(toJson(jsonthis, node)).toStrictEqual({
                         value: 1,
                         next: {
                             value: 2,
                             next: {"$ref": "$Node(1)"}
                         }
-                    };
-
-                    expect(jsonthis.toJson(node)).toStrictEqual(expected);
-                    expect(node.toJSON()).toStrictEqual(expected);
+                    });
                 } else {
-                    expect(() => jsonthis.toJson(node)).toThrow(CircularReferenceError);
-                    expect(() => node.toJSON()).toThrow(CircularReferenceError);
+                    expect(() => toJson(jsonthis, node)).toThrow(CircularReferenceError);
                 }
 
             });
 
-            it.each(testCases)("on %s with nested circular reference", (_, withSequelize, withCRSerializer) => {
+            it("with nested circular reference", () => {
                 class Node {
                     public value: number;
                     public next?: Node;
 
                     constructor(value: number) {
                         this.value = value;
-                    }
-
-                    toJSON(): any {
-                        throw new Error("Should not be called");
                     }
                 }
 
@@ -482,7 +455,8 @@ describe("Jsonthis class", () => {
                 if (withSequelize) sequelize(jsonthis, Node);
 
                 if (withCRSerializer) {
-                    const expected = {
+                    expect(() => toJson(jsonthis, node)).not.toThrow(CircularReferenceError);
+                    expect(toJson(jsonthis, node)).toStrictEqual({
                         value: 1,
                         next: {
                             value: 2,
@@ -491,17 +465,13 @@ describe("Jsonthis class", () => {
                                 next: {"$ref": "$Node(1)"}
                             }
                         }
-                    };
-
-                    expect(jsonthis.toJson(node)).toStrictEqual(expected);
-                    expect(node.toJSON()).toStrictEqual(expected);
+                    });
                 } else {
-                    expect(() => jsonthis.toJson(node)).toThrow(CircularReferenceError);
-                    expect(() => node.toJSON()).toThrow(CircularReferenceError);
+                    expect(() => toJson(jsonthis, node)).toThrow(CircularReferenceError);
                 }
             });
 
-            it.each(testCases)("on %s should be able to serialize a direct duplicated property", (_, withSequelize, withCRSerializer) => {
+            it("should be able to serialize a direct duplicated property", () => {
                 class User {
                     public id: number;
                     public registeredAt: Date;
@@ -511,10 +481,6 @@ describe("Jsonthis class", () => {
                         this.id = id;
                         this.registeredAt = this.updatedAt = new Date();
                     }
-
-                    toJSON(): any {
-                        throw new Error("Should not be called");
-                    }
                 }
 
                 const user = new User(1);
@@ -522,17 +488,15 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
-                const expected = {
+                expect(() => toJson(jsonthis, user)).not.toThrow(CircularReferenceError);
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     registeredAt: user.registeredAt,
                     updatedAt: user.updatedAt
-                }
-
-                expect(jsonthis.toJson(user)).toStrictEqual(expected);
-                expect(user.toJSON()).toStrictEqual(expected);
+                });
             });
 
-            it.each(testCases)("on %s should be able to serialize a nested duplicated property", (_, withSequelize, withCRSerializer) => {
+            it("should be able to serialize a nested duplicated property", () => {
                 const date = new Date();
 
                 class User {
@@ -544,10 +508,6 @@ describe("Jsonthis class", () => {
                         this.id = id;
                         this.registeredAt = date;
                     }
-
-                    toJSON(): any {
-                        throw new Error("Should not be called");
-                    }
                 }
 
                 const user = new User(1, date);
@@ -556,20 +516,18 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
-                const expected = {
+                expect(() => toJson(jsonthis, user)).not.toThrow(CircularReferenceError);
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     registeredAt: date,
                     friend: {
                         id: 2,
                         registeredAt: date
                     }
-                }
-
-                expect(jsonthis.toJson(user)).toStrictEqual(expected);
-                expect(user.toJSON()).toStrictEqual(expected);
+                });
             });
 
-            it.each(testCases)("on %s should be able to serialize an Object referenced twice", (_, withSequelize, withCRSerializer) => {
+            it("should be able to serialize an Object referenced twice", () => {
                 class User {
                     public id: number;
                     public roommate?: User;
@@ -577,10 +535,6 @@ describe("Jsonthis class", () => {
 
                     constructor(id: number) {
                         this.id = id;
-                    }
-
-                    toJSON(): any {
-                        throw new Error("Should not be called");
                     }
                 }
 
@@ -590,17 +544,15 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
-                const expected = {
+                expect(() => toJson(jsonthis, user)).not.toThrow(CircularReferenceError);
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     roommate: {id: 2},
                     friend: {id: 2}
-                };
-
-                expect(jsonthis.toJson(user)).toStrictEqual(expected);
-                expect(user.toJSON()).toStrictEqual(expected);
+                });
             });
 
-            it.each(testCases)("on %s should be able to serialize an Object referenced twice in different sub-trees", (_, withSequelize, withCRSerializer) => {
+            it("should be able to serialize an Object referenced twice in different sub-trees", () => {
                 class User {
                     public id: number;
                     public roommate?: User;
@@ -608,10 +560,6 @@ describe("Jsonthis class", () => {
 
                     constructor(id: number) {
                         this.id = id;
-                    }
-
-                    toJSON(): any {
-                        throw new Error("Should not be called");
                     }
                 }
 
@@ -623,7 +571,8 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
-                const expected = {
+                expect(() => toJson(jsonthis, user)).not.toThrow(CircularReferenceError);
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     roommate: {
                         id: 2,
@@ -633,10 +582,7 @@ describe("Jsonthis class", () => {
                         id: 3,
                         friend: {id: 4}
                     }
-                }
-
-                expect(jsonthis.toJson(user)).toStrictEqual(expected);
-                expect(user.toJSON()).toStrictEqual(expected);
+                });
             });
         });
 
@@ -655,7 +601,7 @@ describe("Jsonthis class", () => {
 
             it("should serialize to unlimited depth by default", () => {
                 const jsonthis = new Jsonthis({models: [User]});
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     friend: {
                         id: 2,
@@ -669,7 +615,7 @@ describe("Jsonthis class", () => {
 
             it("should stop serialization to global maxDepth", () => {
                 const jsonthis = new Jsonthis({maxDepth: 2, models: [User]});
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                expect(toJson(jsonthis, user)).toStrictEqual({
                     id: 1,
                     friend: {
                         id: 2,
@@ -680,7 +626,7 @@ describe("Jsonthis class", () => {
 
             it("should stop serialization to field's maxDepth", () => {
                 const jsonthis = new Jsonthis({models: [User]});
-                expect(jsonthis.toJson(user, {maxDepth: 1})).toStrictEqual({
+                expect(toJson(jsonthis, user, {maxDepth: 1})).toStrictEqual({
                     id: 1,
                     friend: {id: 2}
                 });
@@ -688,7 +634,7 @@ describe("Jsonthis class", () => {
 
             it("should stop serialization to field's maxDepth over global maxDepth", () => {
                 const jsonthis = new Jsonthis({maxDepth: 2, models: [User]});
-                expect(jsonthis.toJson(user, {maxDepth: 1})).toStrictEqual({
+                expect(toJson(jsonthis, user, {maxDepth: 1})).toStrictEqual({
                     id: 1,
                     friend: {id: 2}
                 });
@@ -696,7 +642,35 @@ describe("Jsonthis class", () => {
         });
     });
 
-    describe("Javascript JSON.stringify() compatibility", () => {
+    describe("Jsonthis.toJson() with simple data types", () => {
+        it("should serialize a string", () => {
+            expect(new Jsonthis().toJson("hello word")).toBe("hello word");
+        });
+        it("should serialize a number", () => {
+            expect(new Jsonthis().toJson(123)).toBe(123);
+        });
+        it("should serialize a BigInt (number)", () => {
+            expect(new Jsonthis().toJson(123n)).toBe(123);
+        });
+        it("should serialize a BigInt (unsafe)", () => {
+            expect(new Jsonthis().toJson(9007199254740992n)).toBe("9007199254740992");
+        });
+        it("should serialize a boolean", () => {
+            expect(new Jsonthis().toJson(true)).toBe(true);
+        });
+        it("should serialize a Date", () => {
+            const date = new Date();
+            expect(new Jsonthis().toJson(date)).toBe(date);
+        });
+        it("should serialize an object", () => {
+            expect(new Jsonthis().toJson({value: 123})).toStrictEqual({value: 123});
+        });
+        it("should serialize an array", () => {
+            expect(new Jsonthis().toJson([1, "hello"])).toStrictEqual([1, "hello"]);
+        });
+    });
+
+    describe("Jsonthis and Javascript JSON.stringify() compatibility", () => {
         it("should default-serialize a non-Jsonthis model", () => {
             class User {
                 id: number = 1;
@@ -708,8 +682,8 @@ describe("Jsonthis class", () => {
             const jsonthis = new Jsonthis({case: "snake"});
 
             const user = new User();
-            expect(JSON.stringify(user)).toStrictEqual('{"id":1,"userName":"john-doe","password":"s3cret"}');
             expect(jsonthis.toJson(user)).toStrictEqual({"id": 1, "user_name": "john-doe"});
+            expect(JSON.stringify(user)).toStrictEqual('{"id":1,"userName":"john-doe","password":"s3cret"}');
         });
 
         it("should use Jsonthis serialization when a Jsonthis model is passed", () => {
@@ -718,6 +692,10 @@ describe("Jsonthis class", () => {
                 userName: string = "john-doe";
                 @JsonField(false)
                 password: string = "s3cret";
+
+                toJSON(): any {
+                    throw new Error("Method not implemented.");
+                }
             }
 
             const jsonthis = new Jsonthis({
@@ -726,8 +704,9 @@ describe("Jsonthis class", () => {
             });
 
             const user = new User();
-            expect(JSON.stringify(user)).toStrictEqual('{"id":1,"user_name":"john-doe"}');
             expect(jsonthis.toJson(user)).toStrictEqual({"id": 1, "user_name": "john-doe"});
+            expect(user.toJSON()).toStrictEqual({"id": 1, "user_name": "john-doe"});
+            expect(JSON.stringify(user)).toStrictEqual('{"id":1,"user_name":"john-doe"}');
         });
     });
 });
