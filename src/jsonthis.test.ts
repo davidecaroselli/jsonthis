@@ -29,11 +29,11 @@ describe("Jsonthis class", () => {
 
             const user = new User();
 
-            expect(new Jsonthis().toJson(user)).toStrictEqual({
+            expect(new Jsonthis({models: [User]}).toJson(user)).toStrictEqual({
                 registeredAt: user.registeredAt
             });
 
-            const jsonthis = new Jsonthis();
+            const jsonthis = new Jsonthis({models: [User]});
             jsonthis.registerGlobalSerializer(Date, dateSerializer);
 
             expect(jsonthis.toJson(user)).toStrictEqual({
@@ -60,7 +60,7 @@ describe("Jsonthis class", () => {
 
             const user = new User();
 
-            const jsonthis = new Jsonthis();
+            const jsonthis = new Jsonthis({models: [User]});
 
             jsonthis.registerGlobalSerializer(Date, dateSerializer);
             expect(jsonthis.toJson(user)).toStrictEqual({
@@ -122,7 +122,7 @@ describe("Jsonthis class", () => {
 
                 const user = new User();
 
-                expect(new Jsonthis().toJson(user)).toStrictEqual({
+                expect(new Jsonthis({models: [User]}).toJson(user)).toStrictEqual({
                     id: 123,
                     serial: "9007199254740992",
                     age: 25,
@@ -150,7 +150,7 @@ describe("Jsonthis class", () => {
                 const user = new User(1, "John");
                 user.friend = new User(2, "Jane");
 
-                const jsonthis = new Jsonthis();
+                const jsonthis = new Jsonthis({models: [User]});
                 jsonthis.registerGlobalSerializer(Date, dateSerializer);
 
                 expect(jsonthis.toJson(user)).toStrictEqual({
@@ -175,7 +175,7 @@ describe("Jsonthis class", () => {
                         name: string = "John";
                     }
 
-                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
                         id: 123,
                         name: "John"
                     });
@@ -188,7 +188,7 @@ describe("Jsonthis class", () => {
                         password: string = "s3cret";
                     }
 
-                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
                         id: 123
                     });
                 });
@@ -204,11 +204,11 @@ describe("Jsonthis class", () => {
                         email: string = "john.doe@gmail.com";
                     }
 
-                    expect(new Jsonthis().toJson(new User(), {context: {callerId: 1}})).toStrictEqual({
+                    expect(new Jsonthis({models: [User]}).toJson(new User(), {context: {callerId: 1}})).toStrictEqual({
                         id: 1,
                         email: "john.doe@gmail.com"
                     });
-                    expect(new Jsonthis().toJson(new User(), {context: {callerId: 2}})).toStrictEqual({
+                    expect(new Jsonthis({models: [User]}).toJson(new User(), {context: {callerId: 2}})).toStrictEqual({
                         id: 1
                     });
                 });
@@ -226,7 +226,7 @@ describe("Jsonthis class", () => {
                         serial: number = 435297235;
                     }
 
-                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
                         id: 1,
                         serial: "0x19f21bd3"
                     });
@@ -245,7 +245,7 @@ describe("Jsonthis class", () => {
                         aliases: string[] = ["john.doe-1@gmail.com", "john.doe-2@hotmail.com"];
                     }
 
-                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
                         id: 1,
                         email: "j******e@gmail.com",
                         aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
@@ -266,12 +266,12 @@ describe("Jsonthis class", () => {
                         aliases: string[] = ["john.doe-1@gmail.com", "john.doe-2@hotmail.com"];
                     }
 
-                    expect(new Jsonthis().toJson(new User())).toStrictEqual({
+                    expect(new Jsonthis({models: [User]}).toJson(new User())).toStrictEqual({
                         id: 1,
                         email: "j******e@gmail.com",
                         aliases: ["j********1@gmail.com", "j********2@hotmail.com"]
                     });
-                    expect(new Jsonthis().toJson(new User(), {context: {maskChar: "-"}})).toStrictEqual({
+                    expect(new Jsonthis({models: [User]}).toJson(new User(), {context: {maskChar: "-"}})).toStrictEqual({
                         id: 1,
                         email: "j------e@gmail.com",
                         aliases: ["j--------1@gmail.com", "j--------2@hotmail.com"]
@@ -287,12 +287,12 @@ describe("Jsonthis class", () => {
             }
 
             it("should serialize null values when keepNulls is true", () => {
-                const jsonthis = new Jsonthis({keepNulls: true});
+                const jsonthis = new Jsonthis({keepNulls: true, models: [User]});
                 expect(jsonthis.toJson(new User())).toStrictEqual({id: 1, name: null});
             });
 
             it("should skip null values when keepNulls is false", () => {
-                const jsonthis = new Jsonthis({keepNulls: false});
+                const jsonthis = new Jsonthis({keepNulls: false, models: [User]});
                 expect(jsonthis.toJson(new User())).toStrictEqual({id: 1});
             });
         });
@@ -307,7 +307,7 @@ describe("Jsonthis class", () => {
             const user = new User();
 
             it("should serialize with camel casing", () => {
-                expect(new Jsonthis({case: "camel"}).toJson(user)).toStrictEqual({
+                expect(new Jsonthis({case: "camel", models: [User]}).toJson(user)).toStrictEqual({
                     id: 1,
                     userName: "john-doe",
                     registeredAt: user.registeredAt
@@ -315,7 +315,7 @@ describe("Jsonthis class", () => {
             });
 
             it("should serialize with snake casing", () => {
-                expect(new Jsonthis({case: "snake"}).toJson(user)).toStrictEqual({
+                expect(new Jsonthis({case: "snake", models: [User]}).toJson(user)).toStrictEqual({
                     id: 1,
                     user_name: "john-doe",
                     registered_at: user.registeredAt
@@ -323,7 +323,7 @@ describe("Jsonthis class", () => {
             });
 
             it("should serialize with pascal casing", () => {
-                expect(new Jsonthis({case: "pascal"}).toJson(user)).toStrictEqual({
+                expect(new Jsonthis({case: "pascal", models: [User]}).toJson(user)).toStrictEqual({
                     Id: 1,
                     UserName: "john-doe",
                     RegisteredAt: user.registeredAt
@@ -355,7 +355,7 @@ describe("Jsonthis class", () => {
 
                 const user = new User(1);
 
-                const jsonthis = new Jsonthis();
+                const jsonthis = new Jsonthis({models: [User]});
                 if (withSequelize) sequelize(jsonthis, User);
 
                 expect(jsonthis.toJson(user)).toStrictEqual({
@@ -385,7 +385,7 @@ describe("Jsonthis class", () => {
                 const user = new User(1, "john.doe@gmail.com");
                 user.friend = new User(2, "bob.doe@hotmail.com");
 
-                const jsonthis = new Jsonthis();
+                const jsonthis = new Jsonthis({models: [User]});
                 if (withSequelize) sequelize(jsonthis, User);
 
                 expect(jsonthis.toJson(user)).toStrictEqual({
@@ -434,7 +434,7 @@ describe("Jsonthis class", () => {
                 node.next = new Node(2);
                 node.next.next = node;
 
-                const jsonthis = new Jsonthis(withCRSerializer ? {circularReferenceSerializer} : {});
+                const jsonthis = new Jsonthis(Object.assign({models: [Node]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, Node);
 
                 if (withCRSerializer) {
@@ -467,7 +467,7 @@ describe("Jsonthis class", () => {
                 node.next.next = new Node(3);
                 node.next.next.next = node;
 
-                const jsonthis = new Jsonthis(withCRSerializer ? {circularReferenceSerializer} : {});
+                const jsonthis = new Jsonthis(Object.assign({models: [Node]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, Node);
 
                 if (withCRSerializer) {
@@ -501,7 +501,7 @@ describe("Jsonthis class", () => {
 
                 const user = new User(1);
 
-                const jsonthis = new Jsonthis(withCRSerializer ? {circularReferenceSerializer} : {});
+                const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
                 expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
@@ -529,7 +529,7 @@ describe("Jsonthis class", () => {
                 const user = new User(1, date);
                 user.friend = new User(2, date);
 
-                const jsonthis = new Jsonthis(withCRSerializer ? {circularReferenceSerializer} : {});
+                const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
                 expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
@@ -557,7 +557,7 @@ describe("Jsonthis class", () => {
                 const user = new User(1);
                 user.roommate = user.friend = new User(2);
 
-                const jsonthis = new Jsonthis(withCRSerializer ? {circularReferenceSerializer} : {});
+                const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
                 expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
@@ -584,7 +584,7 @@ describe("Jsonthis class", () => {
                 user.friend = new User(3);
                 user.roommate.friend = user.friend.friend = new User(4);
 
-                const jsonthis = new Jsonthis(withCRSerializer ? {circularReferenceSerializer} : {});
+                const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
                 expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
@@ -616,7 +616,7 @@ describe("Jsonthis class", () => {
             const user = new User(1, new User(2, new User(3, new User(4))));
 
             it("should serialize to unlimited depth by default", () => {
-                const jsonthis = new Jsonthis();
+                const jsonthis = new Jsonthis({models: [User]});
                 expect(jsonthis.toJson(user)).toStrictEqual({
                     id: 1,
                     friend: {
@@ -630,7 +630,7 @@ describe("Jsonthis class", () => {
             });
 
             it("should stop serialization to global maxDepth", () => {
-                const jsonthis = new Jsonthis({maxDepth: 2});
+                const jsonthis = new Jsonthis({maxDepth: 2, models: [User]});
                 expect(jsonthis.toJson(user)).toStrictEqual({
                     id: 1,
                     friend: {
@@ -641,7 +641,7 @@ describe("Jsonthis class", () => {
             });
 
             it("should stop serialization to field's maxDepth", () => {
-                const jsonthis = new Jsonthis();
+                const jsonthis = new Jsonthis({models: [User]});
                 expect(jsonthis.toJson(user, {maxDepth: 1})).toStrictEqual({
                     id: 1,
                     friend: {id: 2}
@@ -649,7 +649,7 @@ describe("Jsonthis class", () => {
             });
 
             it("should stop serialization to field's maxDepth over global maxDepth", () => {
-                const jsonthis = new Jsonthis({maxDepth: 2});
+                const jsonthis = new Jsonthis({maxDepth: 2, models: [User]});
                 expect(jsonthis.toJson(user, {maxDepth: 1})).toStrictEqual({
                     id: 1,
                     friend: {id: 2}
@@ -667,10 +667,11 @@ describe("Jsonthis class", () => {
                 password: string = "s3cret";
             }
 
-            new Jsonthis({case: "snake"});  // This should have no effect
+            const jsonthis = new Jsonthis({case: "snake"});
 
-            expect(JSON.stringify(new User())).toStrictEqual(
-                '{"id":1,"userName":"john-doe","password":"s3cret"}');
+            const user = new User();
+            expect(JSON.stringify(user)).toStrictEqual('{"id":1,"userName":"john-doe","password":"s3cret"}');
+            expect(jsonthis.toJson(user)).toStrictEqual({"id": 1, "user_name": "john-doe"});
         });
 
         it("should use Jsonthis serialization when a Jsonthis model is passed", () => {
@@ -681,13 +682,14 @@ describe("Jsonthis class", () => {
                 password: string = "s3cret";
             }
 
-            new Jsonthis({
+            const jsonthis = new Jsonthis({
                 case: "snake",
                 models: [User]
             });
 
-            expect(JSON.stringify(new User())).toStrictEqual(
-                '{"id":1,"user_name":"john-doe"}');
+            const user = new User();
+            expect(JSON.stringify(user)).toStrictEqual('{"id":1,"user_name":"john-doe"}');
+            expect(jsonthis.toJson(user)).toStrictEqual({"id": 1, "user_name": "john-doe"});
         });
     });
 });
