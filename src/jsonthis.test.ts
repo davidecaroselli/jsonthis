@@ -48,6 +48,29 @@ describe("Jsonthis class", () => {
             expect(() => jsonthis.registerGlobalSerializer(Date, dateSerializer))
                 .toThrow("Serializer already registered for \"Date\"");
         });
+
+        it("should override a global serializer for a class if the override option is set", () => {
+            function overridingDateSerializer(value: Date): string {
+                return value.toUTCString();
+            }
+
+            class User {
+                public registeredAt: Date = new Date();
+            }
+            const user = new User();
+
+            const jsonthis = new Jsonthis();
+
+            jsonthis.registerGlobalSerializer(Date, dateSerializer);
+            expect(jsonthis.toJson(user)).toStrictEqual({
+                registeredAt: user.registeredAt.toISOString()
+            });
+
+            jsonthis.registerGlobalSerializer(Date, overridingDateSerializer, true);
+            expect(jsonthis.toJson(user)).toStrictEqual({
+                registeredAt: user.registeredAt.toUTCString()
+            });
+        });
     });
 
     describe("toJson method", () => {
