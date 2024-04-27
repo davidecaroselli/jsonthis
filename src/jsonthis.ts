@@ -61,7 +61,7 @@ export class Jsonthis {
             for (const model of this.options.models) {
                 const schema = JsonSchema.getOrCreate(model);
                 model.prototype.toJSON = function (options?: ToJsonOptions) {
-                    return self.toJson(Object.assign({}, this), options, undefined, schema);
+                    return self.toJson(this, options, undefined, schema);
                 }
             }
         }
