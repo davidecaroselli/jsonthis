@@ -32,6 +32,7 @@ for your data management needs. Explore the [Sequelize support](#sequelize-suppo
         + [Global Serializer](#global-serializer)
         + [Field-Specific Serializer](#field-specific-serializer)
     * [Contextual Field-Specific Serializer](#contextual-field-specific-serializer)
+    * [Limit Serialization Depth](#limit-serialization-depth)
 - [Circular References](#circular-references)
 - [Sequelize support](#sequelize-support)
 - [Let's Contribute Together!](#lets-contribute-together)
@@ -227,6 +228,40 @@ const jsonthis = new Jsonthis();
 const user = new User();
 console.log(jsonthis.toJson(user, {context: {maskChar: "-"}}));
 // { id: 1, email: 'j------e@gmail.com' }
+```
+
+### Limit Serialization Depth
+
+You can limit the depth of serialization by setting the `maxDepth` option at global level in `JsonthisOptions`
+at construction time:
+
+```typescript
+class User {
+    id: number;
+    name: string;
+    friend?: User;
+
+    constructor(id: number, name: string) {
+        this.id = id;
+        this.name = name;
+    }
+}
+
+const user = new User(1, "John");
+user.friend = new User(2, "Jane");
+user.friend.friend = new User(3, "Bob");
+
+const jsonthis = new Jsonthis({maxDepth: 1});
+console.log(jsonthis.toJson(user));
+// { id: 1, name: 'John', friend: { id: 2, name: 'Jane' } }
+```
+
+You can also set the `maxDepth` option at the method level in `ToJsonOptions`:
+
+```typescript
+const jsonthis = new Jsonthis();
+console.log(jsonthis.toJson(user, {maxDepth: 1}));
+// { id: 1, name: 'John', friend: { id: 2, name: 'Jane' } }
 ```
 
 ## Circular References
