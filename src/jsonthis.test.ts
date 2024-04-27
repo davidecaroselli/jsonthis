@@ -428,6 +428,10 @@ describe("Jsonthis class", () => {
                     constructor(value: number) {
                         this.value = value;
                     }
+
+                    toJSON(): any {
+                        throw new Error("Should not be called");
+                    }
                 }
 
                 const node = new Node(1);
@@ -438,16 +442,19 @@ describe("Jsonthis class", () => {
                 if (withSequelize) sequelize(jsonthis, Node);
 
                 if (withCRSerializer) {
-                    expect(() => jsonthis.toJson(node)).not.toThrow(CircularReferenceError);
-                    expect(jsonthis.toJson(node)).toStrictEqual({
+                    const expected = {
                         value: 1,
                         next: {
                             value: 2,
                             next: {"$ref": "$Node(1)"}
                         }
-                    });
+                    };
+
+                    expect(jsonthis.toJson(node)).toStrictEqual(expected);
+                    expect(node.toJSON()).toStrictEqual(expected);
                 } else {
                     expect(() => jsonthis.toJson(node)).toThrow(CircularReferenceError);
+                    expect(() => node.toJSON()).toThrow(CircularReferenceError);
                 }
 
             });
@@ -460,6 +467,10 @@ describe("Jsonthis class", () => {
                     constructor(value: number) {
                         this.value = value;
                     }
+
+                    toJSON(): any {
+                        throw new Error("Should not be called");
+                    }
                 }
 
                 const node = new Node(1);
@@ -471,8 +482,7 @@ describe("Jsonthis class", () => {
                 if (withSequelize) sequelize(jsonthis, Node);
 
                 if (withCRSerializer) {
-                    expect(() => jsonthis.toJson(node)).not.toThrow(CircularReferenceError);
-                    expect(jsonthis.toJson(node)).toStrictEqual({
+                    const expected = {
                         value: 1,
                         next: {
                             value: 2,
@@ -481,9 +491,13 @@ describe("Jsonthis class", () => {
                                 next: {"$ref": "$Node(1)"}
                             }
                         }
-                    });
+                    };
+
+                    expect(jsonthis.toJson(node)).toStrictEqual(expected);
+                    expect(node.toJSON()).toStrictEqual(expected);
                 } else {
                     expect(() => jsonthis.toJson(node)).toThrow(CircularReferenceError);
+                    expect(() => node.toJSON()).toThrow(CircularReferenceError);
                 }
             });
 
@@ -497,6 +511,10 @@ describe("Jsonthis class", () => {
                         this.id = id;
                         this.registeredAt = this.updatedAt = new Date();
                     }
+
+                    toJSON(): any {
+                        throw new Error("Should not be called");
+                    }
                 }
 
                 const user = new User(1);
@@ -504,12 +522,14 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
-                expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                const expected = {
                     id: 1,
                     registeredAt: user.registeredAt,
                     updatedAt: user.updatedAt
-                });
+                }
+
+                expect(jsonthis.toJson(user)).toStrictEqual(expected);
+                expect(user.toJSON()).toStrictEqual(expected);
             });
 
             it.each(testCases)("on %s should be able to serialize a nested duplicated property", (_, withSequelize, withCRSerializer) => {
@@ -524,6 +544,10 @@ describe("Jsonthis class", () => {
                         this.id = id;
                         this.registeredAt = date;
                     }
+
+                    toJSON(): any {
+                        throw new Error("Should not be called");
+                    }
                 }
 
                 const user = new User(1, date);
@@ -532,15 +556,17 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
-                expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                const expected = {
                     id: 1,
                     registeredAt: date,
                     friend: {
                         id: 2,
                         registeredAt: date
                     }
-                });
+                }
+
+                expect(jsonthis.toJson(user)).toStrictEqual(expected);
+                expect(user.toJSON()).toStrictEqual(expected);
             });
 
             it.each(testCases)("on %s should be able to serialize an Object referenced twice", (_, withSequelize, withCRSerializer) => {
@@ -552,6 +578,10 @@ describe("Jsonthis class", () => {
                     constructor(id: number) {
                         this.id = id;
                     }
+
+                    toJSON(): any {
+                        throw new Error("Should not be called");
+                    }
                 }
 
                 const user = new User(1);
@@ -560,12 +590,14 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
-                expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                const expected = {
                     id: 1,
                     roommate: {id: 2},
                     friend: {id: 2}
-                });
+                };
+
+                expect(jsonthis.toJson(user)).toStrictEqual(expected);
+                expect(user.toJSON()).toStrictEqual(expected);
             });
 
             it.each(testCases)("on %s should be able to serialize an Object referenced twice in different sub-trees", (_, withSequelize, withCRSerializer) => {
@@ -577,6 +609,10 @@ describe("Jsonthis class", () => {
                     constructor(id: number) {
                         this.id = id;
                     }
+
+                    toJSON(): any {
+                        throw new Error("Should not be called");
+                    }
                 }
 
                 const user = new User(1);
@@ -587,8 +623,7 @@ describe("Jsonthis class", () => {
                 const jsonthis = new Jsonthis(Object.assign({models: [User]}, withCRSerializer ? {circularReferenceSerializer} : {}));
                 if (withSequelize) sequelize(jsonthis, User);
 
-                expect(() => jsonthis.toJson(user)).not.toThrow(CircularReferenceError);
-                expect(jsonthis.toJson(user)).toStrictEqual({
+                const expected = {
                     id: 1,
                     roommate: {
                         id: 2,
@@ -598,7 +633,10 @@ describe("Jsonthis class", () => {
                         id: 3,
                         friend: {id: 4}
                     }
-                });
+                }
+
+                expect(jsonthis.toJson(user)).toStrictEqual(expected);
+                expect(user.toJSON()).toStrictEqual(expected);
             });
         });
 
