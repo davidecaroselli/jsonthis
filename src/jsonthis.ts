@@ -23,6 +23,7 @@ export type JsonthisOptions = {
     sequelize?: Sequelize; // Install Jsonthis to this Sequelize instance.
     circularReferenceSerializer?: JsonTraversalFn<any>; // The custom serializer function for circular references, default it to throw an error.
     maxDepth?: number; // The maximum depth to traverse the object, default is unlimited.
+    models?: Function[]; // The model classes to install Jsonthis' toJSON() method.
 }
 
 /**
@@ -53,6 +54,16 @@ export class Jsonthis {
 
     constructor(options?: JsonthisOptions) {
         this.options = options || {};
+
+        if (this.options.models) {
+            const self = this;
+
+            for (const model of this.options.models) {
+                model.prototype.toJSON = function (options?: ToJsonOptions) {
+                    return self.toJson(this, options);
+                }
+            }
+        }
 
         if (this.options.sequelize)
             this.sequelizeInstall(this.options.sequelize);
