@@ -59,7 +59,7 @@ export class Jsonthis {
             const self = this;
 
             for (const model of this.options.models) {
-                const schema = JsonSchema.get(model);
+                const schema = JsonSchema.getOrCreate(model);
                 model.prototype.toJSON = function (options?: ToJsonOptions) {
                     return self.toJson(Object.assign({}, this), options, undefined, schema);
                 }
@@ -187,7 +187,7 @@ export class Jsonthis {
     private serializeTrivialValue(value: any): [any, boolean] {
         switch (typeof value) {
             case "object":
-                if ('toJSON' in value && typeof value.toJSON === "function")
+                if ('toJSON' in value && typeof value.toJSON === "function" && !JsonSchema.has(value.constructor))
                     return [value, true]
                 else
                     return [value, false];
