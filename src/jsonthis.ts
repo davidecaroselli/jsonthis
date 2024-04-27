@@ -62,9 +62,10 @@ export class Jsonthis {
      * Register a global serializer for a class.
      * @param target The class to register the serializer for.
      * @param serializer The serializer function.
+     * @param allowOverride Whether to allow overriding an existing serializer (default is false).
      */
-    registerGlobalSerializer(target: Function, serializer: JsonTraversalFn<any>): void {
-        if (this.serializers.has(target))
+    registerGlobalSerializer(target: Function, serializer: JsonTraversalFn<any>, allowOverride: boolean = false): void {
+        if (this.serializers.has(target) && !allowOverride)
             throw new Error(`Serializer already registered for "${target.name}"`);
         this.serializers.set(target, serializer);
     }
