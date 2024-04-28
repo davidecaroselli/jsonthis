@@ -1,5 +1,4 @@
 export {
-    Json,
     JsonField,
     JsonFieldOptions,
     JsonTraversalState,

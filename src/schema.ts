@@ -1,13 +1,6 @@
 import {ToJsonOptions} from "./jsonthis";
 
 /**
- * @deprecated This decorator is no longer necessary.
- */
-export const Json = function (target: Object): void {
-    // no-op
-}
-
-/**
  * Decorator to mark a field as a Jsonthis-serializable field.
  * @param options The serialization options for the field (or just a boolean to set visibility).
  */
