@@ -2,8 +2,9 @@ export {
     JsonField,
     JsonFieldOptions,
     JsonTraversalState,
-    SimpleJsonTraversalFn,
-    ComplexJsonTraversalFn,
+    JsonTraversalFn1,
+    JsonTraversalFn2,
+    JsonTraversalFn4,
     JsonTraversalFn,
     JsonSchema,
 } from './schema';

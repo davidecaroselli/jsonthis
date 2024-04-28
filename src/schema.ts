@@ -1,4 +1,4 @@
-import {ToJsonOptions} from "./jsonthis";
+import {Jsonthis, ToJsonOptions} from "./jsonthis";
 
 /**
  * Decorator to mark a field as a Jsonthis-serializable field.
@@ -83,25 +83,45 @@ export type JsonTraversalState = {
     visited: VisitMap;
 }
 
-export type SimpleJsonTraversalFn<R> = (value: any) => R;
-export type ComplexJsonTraversalFn<R> = (value: any, state: JsonTraversalState, options?: ToJsonOptions) => R;
+export type JsonTraversalFn1<R> = (value: any) => R;
+export type JsonTraversalFn2<R> = (value: any, options?: ToJsonOptions) => R;
+export type JsonTraversalFn4<R> = (jsonthis: Jsonthis, state: JsonTraversalState, value: any, options?: ToJsonOptions) => R;
+
 /**
  * You can use a traversal function to customize the serialization of a value.
  *  - A "serializer" is a JsonTraversalFn that is invoked whenever a field has a type that matches the
  *  type of the serializer.
  *  - A "visible" property can (optionally) be a JsonTraversalFn that determines whether the field is visible or not
  *  while traversing the object.
+ *
+ *  A traversal function can have one of three signatures:
+ *  - (value: any) => R
+ *    Takes the value of the field to compute the return value R.
+ *  - (value: any, options?: ToJsonOptions) => R
+ *    Takes the value of the field and an optional ToJsonOptions object to compute the return value R.
+ *  - (jsonthis: Jsonthis, state: JsonTraversalState, value: any, options?: ToJsonOptions) => R
+ *    Takes the current instance of Jsonthis, the traversal state object, the value of the field,
+ *    and an optional ToJsonOptions object to compute the return value R.
  */
-export type JsonTraversalFn<R> = SimpleJsonTraversalFn<R> | ComplexJsonTraversalFn<R>;
+export type JsonTraversalFn<R> = JsonTraversalFn1<R> | JsonTraversalFn2<R> | JsonTraversalFn4<R>;
 
 export function evaluateJsonTraversalFn<R>(fn: JsonTraversalFn<R> | undefined | R,
-                                           value: any, state: JsonTraversalState, options?: ToJsonOptions): R | undefined {
+                                           jsonthis: Jsonthis, state: JsonTraversalState, value: any, options?: ToJsonOptions): R | undefined {
     if (fn === undefined) return undefined;
     if (typeof fn === "function") {
-        if (fn.length === 1) return (fn as SimpleJsonTraversalFn<R>)(value);
-        else return (fn as ComplexJsonTraversalFn<R>)(value, state, options);
+        switch (fn.length) {
+            case 1:
+                return (fn as JsonTraversalFn1<R>)(value);
+            case 2:
+                return (fn as JsonTraversalFn2<R>)(value, options);
+            case 4:
+                return (fn as JsonTraversalFn4<R>)(jsonthis, state, value, options);
+            default:
+                throw new Error("Invalid number of arguments for JsonTraversalFn.");
+        }
+    } else {
+        return fn;
     }
-    return fn;
 }
 
 export interface JsonifiedConstructor extends FunctionConstructor {
