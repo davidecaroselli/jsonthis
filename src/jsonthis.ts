@@ -23,6 +23,7 @@ export type JsonthisOptions = {
     sequelize?: Sequelize; // Install Jsonthis to this Sequelize instance.
     circularReferenceSerializer?: JsonTraversalFn<any>; // The custom serializer function for circular references, default it to throw an error.
     maxDepth?: number; // The maximum depth to traverse the object, default is unlimited.
+    models?: Function[]; // The model classes to install Jsonthis' toJSON() method.
 }
 
 /**
@@ -54,8 +55,19 @@ export class Jsonthis {
     constructor(options?: JsonthisOptions) {
         this.options = options || {};
 
+        if (this.options.models) {
+            const self = this;
+
+            for (const model of this.options.models) {
+                const schema = JsonSchema.getOrCreate(model);
+                model.prototype.toJSON = function (options?: ToJsonOptions) {
+                    return self.toJson(this, options, undefined, schema);
+                }
+            }
+        }
+
         if (this.options.sequelize)
-            this.sequelizeInstall(this.options.sequelize);
+            this.sequelizeInstall(this.options.sequelize.models);
     }
 
     /**
@@ -175,7 +187,7 @@ export class Jsonthis {
     private serializeTrivialValue(value: any): [any, boolean] {
         switch (typeof value) {
             case "object":
-                if ('toJSON' in value && typeof value.toJSON === "function")
+                if ('toJSON' in value && typeof value.toJSON === "function" && !JsonSchema.isPresent(value.constructor))
                     return [value, true]
                 else
                     return [value, false];
@@ -196,8 +208,8 @@ export class Jsonthis {
 
     }
 
-    private sequelizeInstall(sequelize: Sequelize) {
-        for (const model of sequelize.models) {
+    private sequelizeInstall(models: Iterable<any>) {
+        for (const model of models) {
             const schema = JsonSchema.get(model);
 
             this.registerGlobalSerializer(model, (model: Model, state: JsonTraversalState, options?: ToJsonOptions) => {
@@ -205,10 +217,9 @@ export class Jsonthis {
             });
 
             const jsonthis = this;
-            model.prototype.toJSON = function () {
-                return jsonthis.toJson(this);
+            model.prototype.toJSON = function (options?: ToJsonOptions) {
+                return jsonthis.toJson(this, options);
             }
         }
-
     }
 }

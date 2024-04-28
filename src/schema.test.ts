@@ -1,7 +1,7 @@
 import {JsonField, JsonifiedConstructor, JsonSchema} from "./schema";
 
 describe("JsonSchema class", () => {
-    describe("getOrCreate method", () => {
+    describe("getOrCreate() method", () => {
         class User {
         }
 
@@ -16,7 +16,7 @@ describe("JsonSchema class", () => {
         });
     });
 
-    describe("get method", () => {
+    describe("get() method", () => {
         class User {
         }
 
@@ -41,6 +41,20 @@ describe("JsonSchema class", () => {
             expect(schema2).toBeDefined();
             expect(schema2).toBeInstanceOf(JsonSchema);
             expect(schema2!.definedFields.size).toBe(0);
+        });
+    });
+
+    describe("isPresent() method", () => {
+        class User {
+        }
+
+        it("should return false if schema is not present", () => {
+            expect(JsonSchema.isPresent(User)).toBeFalsy();
+        });
+
+        it("should return true if schema is present", () => {
+            JsonSchema.getOrCreate(User);  // Force schema creation
+            expect(JsonSchema.isPresent(User)).toBeTruthy();
         });
     });
 });

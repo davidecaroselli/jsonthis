@@ -137,4 +137,8 @@ export class JsonSchema {
         return (target as JsonifiedConstructor)["__json_schema"];
     }
 
+    static isPresent(target: unknown): boolean {
+        return !!JsonSchema.get(target);
+    }
+
 }
