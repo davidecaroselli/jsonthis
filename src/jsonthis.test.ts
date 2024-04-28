@@ -182,8 +182,8 @@ describe("Jsonthis class", () => {
                 });
 
                 it("should serialize fields with custom visible function", () => {
-                    function showEmailOnlyToOwner(email: string, state: JsonTraversalState, opts?: ToJsonOptions): boolean {
-                        return opts?.context?.callerId === (state.parent as User)?.id;
+                    function showEmailOnlyToOwner(jsonthis: Jsonthis, state: JsonTraversalState, value: string, options?: ToJsonOptions): boolean {
+                        return options?.context?.callerId === (state.parent as User)?.id;
                     }
 
                     class User {
@@ -241,8 +241,8 @@ describe("Jsonthis class", () => {
                 });
 
                 it("should serialize fields with custom context-dependant serializer", () => {
-                    function maskEmail(value: string, state: JsonTraversalState, opts?: ToJsonOptions): string {
-                        const maskChar = opts?.context?.maskChar || "*";
+                    function maskEmail(value: string, options?: ToJsonOptions): string {
+                        const maskChar = options?.context?.maskChar || "*";
                         return value.replace(/(?<=.).(?=[^@]*?.@)/g, maskChar);
                     }
 
@@ -323,8 +323,8 @@ describe("Jsonthis class", () => {
             ["simple Objects", false],
             ["Sequelize models", true]
         ])("with context on %s", (_, withSequelize) => {
-            function contextualMaskEmail(value: string, state: JsonTraversalState, opts?: ToJsonOptions): string {
-                const maskChar = opts?.context?.maskChar || "*";
+            function contextualMaskEmail(value: string, options?: ToJsonOptions): string {
+                const maskChar = options?.context?.maskChar || "*";
                 return value.replace(/(?<=.).(?=[^@]*?.@)/g, maskChar);
             }
 

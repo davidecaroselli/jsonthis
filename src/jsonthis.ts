@@ -120,7 +120,7 @@ export class Jsonthis {
 
         // Before traversing the object, check if it has a custom serializer...
         const customSerializer = this.serializers.get(target.constructor);
-        if (customSerializer) return evaluateJsonTraversalFn(customSerializer, target, state, options);
+        if (customSerializer) return evaluateJsonTraversalFn(customSerializer, this, state, target, options);
 
         // ...or is a trivial type to serialize
         const [value, trivial] = this.serializeTrivialValue(target);
@@ -137,7 +137,7 @@ export class Jsonthis {
             const field: JsonFieldOptions = schema?.definedFields.get(propertyName) || {};
 
             // Check if the field is visible
-            const visible = evaluateJsonTraversalFn(field.visible, value, state, options);
+            const visible = evaluateJsonTraversalFn(field.visible, this, state, value, options);
             if (visible === false) continue;
 
             // Begin value serialization
@@ -171,12 +171,12 @@ export class Jsonthis {
             // Check for circular references
             if (state.visited.visit(value)) {
                 if (this.options.circularReferenceSerializer)
-                    return this.options.circularReferenceSerializer(value, state);
+                    return evaluateJsonTraversalFn(this.options.circularReferenceSerializer, this, state, value, options);
                 throw new CircularReferenceError(value, state);
             }
 
             if (serializer)
-                return evaluateJsonTraversalFn(serializer, value, state, options);
+                return evaluateJsonTraversalFn(serializer, this, state, value, options);
             else
                 return this.toJson(value, options, state!);
         } finally {
@@ -212,8 +212,8 @@ export class Jsonthis {
         for (const model of models) {
             const schema = JsonSchema.get(model);
 
-            this.registerGlobalSerializer(model, (model: Model, state: JsonTraversalState, options?: ToJsonOptions) => {
-                return this.toJson(model.get(), options, state, schema);
+            this.registerGlobalSerializer(model, (jsonthis: Jsonthis, state: JsonTraversalState, value: Model, options?: ToJsonOptions) => {
+                return jsonthis.toJson(value.get(), options, state, schema);
             });
 
             const jsonthis = this;
