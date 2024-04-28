@@ -148,8 +148,8 @@ This allows you to dynamically show or hide properties as needed.
 In the following example, the `email` property is only visible if the email owner is requesting it:
 
 ```typescript
-function showEmailOnlyToOwner(/* email */_: string, state: JsonTraversalState, opts?: ToJsonOptions): boolean {
-    return opts?.context?.callerId === (state.parent as User)?.id;
+function showEmailOnlyToOwner(jsonthis: Jsonthis, state: JsonTraversalState, value: string, options?: ToJsonOptions): boolean {
+    return options?.context?.callerId === (state.parent as User)?.id;
 }
 
 class User {
@@ -285,8 +285,8 @@ Jsonthis! serialization supports a user-defined context object that can be used 
 process:
 
 ```typescript
-function maskEmail(value: string, state: JsonTraversalState, opts?: ToJsonOptions): string {
-    return value.replace(/(?<=.).(?=[^@]*?.@)/g, opts?.context?.maskChar || "*");
+function maskEmail(value: string, options?: ToJsonOptions): string {
+  return value.replace(/(?<=.).(?=[^@]*?.@)/g, options?.context?.maskChar || "*");
 }
 
 class User {
