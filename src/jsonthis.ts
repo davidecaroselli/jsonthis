@@ -119,6 +119,9 @@ export class Jsonthis {
             state.visited.visit(target);
 
         // Before traversing the object, check if it has a custom serializer...
+        const schemaSerializer = schema?.serializer;
+        if (schemaSerializer) return evaluateJsonTraversalFn(schemaSerializer, this, state, target, options);
+
         const customSerializer = this.serializers.get(target.constructor);
         if (customSerializer) return evaluateJsonTraversalFn(customSerializer, this, state, target, options);
 

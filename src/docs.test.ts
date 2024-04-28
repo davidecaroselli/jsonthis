@@ -22,7 +22,7 @@ console.log = function (message?: any, ...optionalParams: any[]): void {
     Console._results.push(message);
     for (const param of optionalParams)
         Console._results.push(param);
-    Console.log(message, ...optionalParams);
+    // Console.log(message, ...optionalParams);
 };
 
 function test(fn: () => any, ...expected: any): () => void {

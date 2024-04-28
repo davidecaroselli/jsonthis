@@ -17,6 +17,17 @@ export const JsonField = function (options?: boolean | JsonFieldOptions): Functi
     }
 }
 
+/**
+ * Decorator to set a custom serializer for a class.
+ * @param fn The custom serializer function for the class.
+ */
+export const JsonSerializer = function (fn: JsonTraversalFn<any>): Function {
+    return function JsonSerializer(target: Object): void {
+        const schema = JsonSchema.getOrCreate(target.constructor);
+        schema.serializer = fn;
+    }
+}
+
 export class VisitMap {
     private depths: Array<Map<any, Array<any>>> = [new Map<any, Array<any>>()]
     private currentDepth: number = 0
@@ -137,20 +148,20 @@ export type JsonFieldOptions = {
 }
 
 export class JsonSchema {
+    serializer?: JsonTraversalFn<any>;
     definedFields: Map<string, JsonFieldOptions> = new Map();
 
-    static getOrCreate(target: unknown): JsonSchema {
+    static getOrCreate(target: Function): JsonSchema {
         const constructor = (target as JsonifiedConstructor)
         return constructor["__json_schema"] = constructor["__json_schema"] || new JsonSchema();
     }
 
-    static get(target: unknown): JsonSchema | undefined {
-        if (!(target instanceof Function)) return undefined
+    static get(target: Function): JsonSchema | undefined {
         if (!Object.hasOwn(target, "__json_schema")) return undefined;
         return (target as JsonifiedConstructor)["__json_schema"];
     }
 
-    static isPresent(target: unknown): boolean {
+    static isPresent(target: Function): boolean {
         return !!JsonSchema.get(target);
     }
 
