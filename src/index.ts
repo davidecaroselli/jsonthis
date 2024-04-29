@@ -1,12 +1,13 @@
 export {
     JsonField,
+    JsonSerializer,
     JsonFieldOptions,
     JsonTraversalState,
     JsonTraversalFn1,
     JsonTraversalFn2,
     JsonTraversalFn4,
     JsonTraversalFn,
-    JsonSchema,
+    JsonSchema
 } from './schema';
 
 export {
