@@ -1,4 +1,4 @@
-import {JsonField, JsonifiedConstructor, JsonSchema} from "./schema";
+import {JsonField, JsonSchema} from "./schema";
 
 describe("JsonSchema class", () => {
     describe("getOrCreate() method", () => {
@@ -6,10 +6,7 @@ describe("JsonSchema class", () => {
         }
 
         it("should return a new instance of JsonSchema", () => {
-            const type = (User as unknown) as JsonifiedConstructor;
-            expect(type["__json_schema"]).toBeUndefined();
-
-            const schema = JsonSchema.getOrCreate(type);
+            const schema = JsonSchema.getOrCreate(User);
             expect(schema).toBeDefined();
             expect(schema).toBeInstanceOf(JsonSchema);
             expect(schema.definedFields.size).toBe(0);
@@ -21,23 +18,17 @@ describe("JsonSchema class", () => {
         }
 
         it("should return undefined if schema is not present", () => {
-            const type = (User as unknown) as JsonifiedConstructor;
-            expect(type["__json_schema"]).toBeUndefined();
-
-            const schema = JsonSchema.get(type);
+            const schema = JsonSchema.get(User);
             expect(schema).toBeUndefined();
         });
 
         it("should return schema if present", () => {
-            const type = (User as unknown) as JsonifiedConstructor;
-            expect(type["__json_schema"]).toBeUndefined();
-
-            const schema = JsonSchema.getOrCreate(type);
+            const schema = JsonSchema.getOrCreate(User);
             expect(schema).toBeDefined();
             expect(schema).toBeInstanceOf(JsonSchema);
             expect(schema.definedFields.size).toBe(0);
 
-            const schema2 = JsonSchema.get(type);
+            const schema2 = JsonSchema.get(User);
             expect(schema2).toBeDefined();
             expect(schema2).toBeInstanceOf(JsonSchema);
             expect(schema2!.definedFields.size).toBe(0);
@@ -67,8 +58,7 @@ describe("@JsonField decorator", () => {
                 public name: string = "John Doe";
             }
 
-            const type = (User as unknown) as JsonifiedConstructor;
-            const schema = JsonSchema.getOrCreate(type);
+            const schema = JsonSchema.getOrCreate(User);
             const fieldOptions = schema.definedFields.get('name');
 
             expect(fieldOptions).toBeDefined();
@@ -81,8 +71,7 @@ describe("@JsonField decorator", () => {
                 public name: string = "John Doe";
             }
 
-            const type = (User as unknown) as JsonifiedConstructor;
-            const schema = JsonSchema.getOrCreate(type);
+            const schema = JsonSchema.getOrCreate(User);
             const fieldOptions = schema.definedFields.get('name');
 
             expect(fieldOptions).toBeDefined();
@@ -99,8 +88,7 @@ describe("@JsonField decorator", () => {
                 public age: number = 25;
             }
 
-            const type = (User as unknown) as JsonifiedConstructor;
-            const schema = JsonSchema.getOrCreate(type);
+            const schema = JsonSchema.getOrCreate(User);
             const fieldOptions = schema.definedFields.get('age');
 
             expect(fieldOptions).toBeDefined();
@@ -114,8 +102,7 @@ describe("@JsonField decorator", () => {
                 public age: number = 25;
             }
 
-            const type = (User as unknown) as JsonifiedConstructor;
-            const schema = JsonSchema.getOrCreate(type);
+            const schema = JsonSchema.getOrCreate(User);
             const fieldOptions = schema.definedFields.get('age');
 
             expect(fieldOptions).toBeDefined();
@@ -131,8 +118,7 @@ describe("@JsonField decorator", () => {
                 public age: number = 25;
             }
 
-            const type = (User as unknown) as JsonifiedConstructor;
-            const schema = JsonSchema.getOrCreate(type);
+            const schema = JsonSchema.getOrCreate(User);
             const fieldOptions = schema.definedFields.get('age');
 
             expect(fieldOptions).toBeDefined();
@@ -147,8 +133,7 @@ describe("@JsonField decorator", () => {
                 public age: number = 25;
             }
 
-            const type = (User as unknown) as JsonifiedConstructor;
-            const schema = JsonSchema.getOrCreate(type);
+            const schema = JsonSchema.getOrCreate(User);
             const fieldOptions = schema.definedFields.get('age');
 
             expect(fieldOptions).toBeDefined();

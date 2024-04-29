@@ -135,10 +135,6 @@ export function evaluateJsonTraversalFn<R>(fn: JsonTraversalFn<R> | undefined | 
     }
 }
 
-export interface JsonifiedConstructor extends FunctionConstructor {
-    __json_schema?: JsonSchema;
-}
-
 /**
  * Options for the @JsonField decorator.
  */
@@ -147,18 +143,21 @@ export type JsonFieldOptions = {
     serializer?: JsonTraversalFn<any>;  // The custom serializer function for the column.
 }
 
+interface JsonConstructor extends FunctionConstructor {
+    jsonSchema?: JsonSchema;
+}
+
 export class JsonSchema {
     serializer?: JsonTraversalFn<any>;
     definedFields: Map<string, JsonFieldOptions> = new Map();
 
     static getOrCreate(target: Function): JsonSchema {
-        const constructor = (target as JsonifiedConstructor)
-        return constructor["__json_schema"] = constructor["__json_schema"] || new JsonSchema();
+        const constructor = (target as JsonConstructor)
+        return constructor.jsonSchema = constructor.jsonSchema || new JsonSchema();
     }
 
     static get(target: Function): JsonSchema | undefined {
-        if (!Object.hasOwn(target, "__json_schema")) return undefined;
-        return (target as JsonifiedConstructor)["__json_schema"];
+        return (target as JsonConstructor).jsonSchema;
     }
 
     static isPresent(target: Function): boolean {
