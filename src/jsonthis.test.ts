@@ -1,5 +1,5 @@
 import {CircularReferenceError, Jsonthis, ToJsonOptions} from "./Jsonthis";
-import {JsonField, JsonSchema, JsonTraversalState} from "./schema";
+import {JsonField, JsonSchema, JsonSerializer, JsonTraversalState} from "./schema";
 
 function sequelize(jsonthis: Jsonthis, ...models: any) {
     for (const model of models) {
@@ -88,6 +88,57 @@ describe("Jsonthis class", () => {
                 expect(toJson(jsonthis, user)).toStrictEqual({
                     registeredAt: user.registeredAt.toUTCString()
                 });
+            });
+        });
+
+        describe("with @JsonSerializer decorated class", () => {
+            function valueSerializer(value: Value): string {
+                return `${value.type}:${value.value}`;
+            }
+
+            @JsonSerializer(valueSerializer)
+            class Value {
+                type: string;
+                value: any;
+
+                constructor(type: string, value: any) {
+                    this.type = type;
+                    this.value = value;
+                }
+            }
+
+            it("should serialize a class with a custom serializer", () => {
+                const value = new Value("int", 123);
+                const jsonthis = new Jsonthis({models: [Value]});
+
+                expect(toJson(jsonthis, value)).toStrictEqual("int:123");
+            });
+
+            it("should override global serializer", () => {
+                function globalSerializer(value: Value): string {
+                    return `${value.type}=${value.value}`;
+                }
+
+                const value = new Value("int", 123);
+                const jsonthis = new Jsonthis({models: [Value]});
+                jsonthis.registerGlobalSerializer(Value, globalSerializer);
+
+                expect(toJson(jsonthis, value)).toStrictEqual("int:123");
+            });
+
+            it("should not override field-level serializer", () => {
+                function fieldSerializer(value: Value): string {
+                    return `${value.type}='${value.value}'`;
+                }
+
+                class User {
+                    @JsonField({serializer: fieldSerializer})
+                    name: Value = new Value("string", "John Doe");
+                }
+
+                const user = new User();
+                const jsonthis = new Jsonthis({models: [Value, User]});
+                expect(toJson(jsonthis, user)).toStrictEqual({name: "string='John Doe'"});
             });
         });
 

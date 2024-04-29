@@ -22,8 +22,8 @@ export const JsonField = function (options?: boolean | JsonFieldOptions): Functi
  * @param fn The custom serializer function for the class.
  */
 export const JsonSerializer = function (fn: JsonTraversalFn<any>): Function {
-    return function JsonSerializer(target: Object): void {
-        const schema = JsonSchema.getOrCreate(target.constructor);
+    return function JsonSerializer(target: Function): void {
+        const schema = JsonSchema.getOrCreate(target);
         schema.serializer = fn;
     }
 }
