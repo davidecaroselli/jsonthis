@@ -1,5 +1,5 @@
 import timemachine from "timemachine";
-import {JsonField, JsonTraversalState} from "./schema";
+import {JsonField, JsonSerializer, JsonTraversalState} from "./schema";
 import {Jsonthis, ToJsonOptions} from "./jsonthis";
 
 timemachine.config({
@@ -22,7 +22,7 @@ console.log = function (message?: any, ...optionalParams: any[]): void {
     Console._results.push(message);
     for (const param of optionalParams)
         Console._results.push(param);
-    Console.log(message, ...optionalParams);
+    // Console.log(message, ...optionalParams);
 };
 
 function test(fn: () => any, ...expected: any): () => void {
@@ -187,7 +187,7 @@ describe("README.md", () => {
             {id: 1, registeredAt: 'Sat, 27 Apr 2024 17:03:52 GMT'}
         ));
 
-        it("Field-Specific Serializer", test(() => {
+        it("Field-Level Serializer", test(() => {
                 function maskEmail(value: string): string {
                     return value.replace(/(?<=.).(?=[^@]*?.@)/g, "*");
                 }
@@ -209,7 +209,34 @@ describe("README.md", () => {
             {id: 1, email: 'j******e@gmail.com'}
         ));
 
-        it("Contextual Field-Specific Serializer", test(() => {
+        it("Class-Level Serializer", test(() => {
+                function valueSerializer(value: Value): string {
+                    return `${value.type}(${value.value})`;
+                }
+
+                @JsonSerializer(valueSerializer)
+                class Value {
+                    type: string;
+                    value: any;
+
+                    constructor(type: string, value: any) {
+                        this.type = type;
+                        this.value = value;
+                    }
+
+                    declare toJSON: () => any;
+                }
+
+                const jsonthis = new Jsonthis({models: [Value]});
+
+                const value = new Value("int", 123);
+                console.log(value.toJSON());
+                // "int(123)"
+            },
+            "int(123)"
+        ));
+
+        it("Contextual Custom Serializer", test(() => {
                 function maskEmail(value: string, options?: ToJsonOptions): string {
                     return value.replace(/(?<=.).(?=[^@]*?.@)/g, options?.context?.maskChar || "*");
                 }
