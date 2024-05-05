@@ -1,5 +1,6 @@
 import {CircularReferenceError, Jsonthis, ToJsonOptions} from "./Jsonthis";
 import {JsonField, JsonSchema, JsonSerializer, JsonTraversalState} from "./schema";
+import JSONBigInt from "json-bigint";
 
 function sequelize(jsonthis: Jsonthis, ...models: any) {
     for (const model of models) {
@@ -161,9 +162,22 @@ describe("Jsonthis class", () => {
 
                 const user = new User();
 
+                // BigInt values are transformed to strings by default if exceed the safe integer range
                 expect(toJson(new Jsonthis({models: [User]}), user)).toStrictEqual({
                     id: 123,
                     serial: "9007199254740992",
+                    age: 25,
+                    name: "John",
+                    deleted: false,
+                    registeredAt: user.registeredAt,
+                    address: {city: "New York", country: "USA"},
+                    aliases: ["John Doe", "Johny"]
+                });
+
+                // Force BigInt values to be returned unchanged
+                expect(toJson(new Jsonthis({models: [User], transformBigInt: false}), user)).toStrictEqual({
+                    id: 123n,
+                    serial: 9007199254740992n,
                     age: 25,
                     name: "John",
                     deleted: false,
@@ -706,6 +720,9 @@ describe("Jsonthis class", () => {
         it("should serialize a BigInt (unsafe)", () => {
             expect(new Jsonthis().toJson(9007199254740992n)).toBe("9007199254740992");
         });
+        it("should keep a BigInt unchanged with transformBigInt equals false", () => {
+            expect(new Jsonthis({transformBigInt: false}).toJson(9007199254740992n)).toBe(9007199254740992n);
+        });
         it("should serialize a boolean", () => {
             expect(new Jsonthis().toJson(true)).toBe(true);
         });
@@ -758,6 +775,26 @@ describe("Jsonthis class", () => {
             expect(jsonthis.toJson(user)).toStrictEqual({"id": 1, "user_name": "john-doe"});
             expect(user.toJSON()).toStrictEqual({"id": 1, "user_name": "john-doe"});
             expect(JSON.stringify(user)).toStrictEqual('{"id":1,"user_name":"john-doe"}');
+        });
+
+        it("should serialize BigInt values directly via JSONBigInt", () => {
+            class User {
+                id: bigint = 9007199254740992n;
+
+                toJSON(): any {
+                    throw new Error("Method not implemented.");
+                }
+            }
+
+            const jsonthis = new Jsonthis({
+                transformBigInt: false,
+                models: [User]
+            });
+
+            const user = new User();
+            expect(jsonthis.toJson(user)).toStrictEqual({"id": 9007199254740992n});
+            expect(user.toJSON()).toStrictEqual({"id": 9007199254740992n});
+            expect(JSONBigInt.stringify(user)).toStrictEqual('{"id":9007199254740992}');
         });
     });
 });

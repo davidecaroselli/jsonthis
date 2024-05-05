@@ -24,6 +24,7 @@ export type JsonthisOptions = {
     circularReferenceSerializer?: JsonTraversalFn<any>; // The custom serializer function for circular references, default it to throw an error.
     maxDepth?: number; // The maximum depth to traverse the object, default is unlimited.
     models?: Function[]; // The model classes to install Jsonthis' toJSON() method.
+    transformBigInt?: boolean; // Whether to transform BigInt values to strings or not (default is true).
 }
 
 /**
@@ -195,7 +196,9 @@ export class Jsonthis {
                 else
                     return [value, false];
             case "bigint":
-                if (value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER)
+                if (this.options.transformBigInt === false)
+                    return [value, true];
+                else if (value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER)
                     return [value.toString(), true];
                 else
                     return [Number(value), true];

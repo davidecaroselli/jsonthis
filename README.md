@@ -36,6 +36,7 @@ for your data management needs. Explore the [Sequelize support](#sequelize-suppo
         + [Field-Level Serializer](#field-level-serializer)
     * [Contextual Custom Serializer](#contextual-custom-serializer)
     * [Limit Serialization Depth](#limit-serialization-depth)
+    * [BigInt Serialization](#bigint-serialization)
 - [Circular References](#circular-references)
 - [Sequelize support](#sequelize-support)
 - [Let's Contribute Together!](#lets-contribute-together)
@@ -373,6 +374,42 @@ const jsonthis = new Jsonthis({models: [User]});
 
 console.log(jsonthis.toJson(user, {maxDepth: 1}));
 // { id: 1, name: 'John', friend: { id: 2, name: 'Jane' } }
+```
+
+### BigInt Serialization
+
+By default, Jsonthis! serializes `BigInt` values as strings if they exceed the maximum safe integer value to avoid
+precision loss:
+
+```typescript
+class User {
+    id: bigint = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    declare toJSON: () => any;
+}
+
+new Jsonthis({models: [User]});
+const user = new User();
+console.log(user.toJSON());
+// { id: '9007199254740992' }
+
+console.log(JSON.stringify(user));
+// {"id":"9007199254740992"}
+```
+
+However, you can change this behavior by setting the `transformBigInt` option to `false`. This is useful if you plan to
+use custom JSON implementations that can handle `BigInt` values, for
+example the [json-bigint](https://www.npmjs.com/package/json-bigint) library:
+
+```typescript
+import JSONBigInt from "json-bigint";
+
+new Jsonthis({models: [User], transformBigInt: false});
+const user = new User();
+console.log(user.toJSON());
+// { id: 9007199254740992n }
+
+console.log(JSONBigInt.stringify(user));
+// {"id":9007199254740992}
 ```
 
 ## Circular References
