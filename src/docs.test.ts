@@ -1,6 +1,7 @@
 import timemachine from "timemachine";
 import {JsonField, JsonSerializer, JsonTraversalState} from "./schema";
 import {Jsonthis, ToJsonOptions} from "./jsonthis";
+import JSONBigInt from "json-bigint";
 
 timemachine.config({
     dateString: '2024-04-27T17:03:52.158Z'
@@ -311,6 +312,46 @@ describe("README.md", () => {
                     // { id: 1, name: 'John', friend: { id: 2, name: 'Jane' } }
                 },
                 {id: 1, name: 'John', friend: {id: 2, name: 'Jane'}}
+            ));
+        });
+
+        describe("BigInt Serialization", () => {
+            it("default behavior", test(() => {
+                    class User {
+                        id: bigint = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+                        declare toJSON: () => any;
+                    }
+
+                    new Jsonthis({models: [User]});
+                    const user = new User();
+                    console.log(user.toJSON());
+                    // { id: '9007199254740992' }
+
+                    console.log(JSON.stringify(user));
+                    // {"id":"9007199254740992"}
+                },
+                {id: '9007199254740992'},
+                "{\"id\":\"9007199254740992\"}"
+            ));
+
+            it("with transformBigInt = false", test(() => {
+                    class User {
+                        id: bigint = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+                        declare toJSON: () => any;
+                    }
+
+                    // --------
+
+                    new Jsonthis({models: [User], transformBigInt: false});
+                    const user = new User();
+                    console.log(user.toJSON());
+                    // { id: 9007199254740992n }
+
+                    console.log(JSONBigInt.stringify(user));
+                    // {"id":9007199254740992}
+                },
+                {id: 9007199254740992n},
+                "{\"id\":9007199254740992}"
             ));
         });
     });
