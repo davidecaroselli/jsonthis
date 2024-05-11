@@ -1,11 +1,4 @@
-import {ToJsonOptions} from "./jsonthis";
-
-/**
- * @deprecated This decorator is no longer necessary.
- */
-export const Json = function (target: Object): void {
-    // no-op
-}
+import {Jsonthis, ToJsonOptions} from "./jsonthis";
 
 /**
  * Decorator to mark a field as a Jsonthis-serializable field.
@@ -21,6 +14,17 @@ export const JsonField = function (options?: boolean | JsonFieldOptions): Functi
         const key = propertyName.toString();
         const schema = JsonSchema.getOrCreate(target.constructor);
         schema.definedFields.set(key, options);
+    }
+}
+
+/**
+ * Decorator to set a custom serializer for a class.
+ * @param fn The custom serializer function for the class.
+ */
+export const JsonSerializer = function (fn: JsonTraversalFn<any>): Function {
+    return function JsonSerializer(target: Function): void {
+        const schema = JsonSchema.getOrCreate(target);
+        schema.serializer = fn;
     }
 }
 
@@ -90,29 +94,45 @@ export type JsonTraversalState = {
     visited: VisitMap;
 }
 
-export type SimpleJsonTraversalFn<R> = (value: any) => R;
-export type ComplexJsonTraversalFn<R> = (value: any, state: JsonTraversalState, options?: ToJsonOptions) => R;
+export type JsonTraversalFn1<R> = (value: any) => R;
+export type JsonTraversalFn2<R> = (value: any, options?: ToJsonOptions) => R;
+export type JsonTraversalFn4<R> = (jsonthis: Jsonthis, state: JsonTraversalState, value: any, options?: ToJsonOptions) => R;
+
 /**
  * You can use a traversal function to customize the serialization of a value.
  *  - A "serializer" is a JsonTraversalFn that is invoked whenever a field has a type that matches the
  *  type of the serializer.
  *  - A "visible" property can (optionally) be a JsonTraversalFn that determines whether the field is visible or not
  *  while traversing the object.
+ *
+ *  A traversal function can have one of three signatures:
+ *  - (value: any) => R
+ *    Takes the value of the field to compute the return value R.
+ *  - (value: any, options?: ToJsonOptions) => R
+ *    Takes the value of the field and an optional ToJsonOptions object to compute the return value R.
+ *  - (jsonthis: Jsonthis, state: JsonTraversalState, value: any, options?: ToJsonOptions) => R
+ *    Takes the current instance of Jsonthis, the traversal state object, the value of the field,
+ *    and an optional ToJsonOptions object to compute the return value R.
  */
-export type JsonTraversalFn<R> = SimpleJsonTraversalFn<R> | ComplexJsonTraversalFn<R>;
+export type JsonTraversalFn<R> = JsonTraversalFn1<R> | JsonTraversalFn2<R> | JsonTraversalFn4<R>;
 
 export function evaluateJsonTraversalFn<R>(fn: JsonTraversalFn<R> | undefined | R,
-                                           value: any, state: JsonTraversalState, options?: ToJsonOptions): R | undefined {
+                                           jsonthis: Jsonthis, state: JsonTraversalState, value: any, options?: ToJsonOptions): R | undefined {
     if (fn === undefined) return undefined;
     if (typeof fn === "function") {
-        if (fn.length === 1) return (fn as SimpleJsonTraversalFn<R>)(value);
-        else return (fn as ComplexJsonTraversalFn<R>)(value, state, options);
+        switch (fn.length) {
+            case 1:
+                return (fn as JsonTraversalFn1<R>)(value);
+            case 2:
+                return (fn as JsonTraversalFn2<R>)(value, options);
+            case 4:
+                return (fn as JsonTraversalFn4<R>)(jsonthis, state, value, options);
+            default:
+                throw new Error("Invalid number of arguments for JsonTraversalFn.");
+        }
+    } else {
+        return fn;
     }
-    return fn;
-}
-
-export interface JsonifiedConstructor extends FunctionConstructor {
-    __json_schema?: JsonSchema;
 }
 
 /**
@@ -123,21 +143,24 @@ export type JsonFieldOptions = {
     serializer?: JsonTraversalFn<any>;  // The custom serializer function for the column.
 }
 
+interface JsonConstructor extends FunctionConstructor {
+    jsonSchema?: JsonSchema;
+}
+
 export class JsonSchema {
+    serializer?: JsonTraversalFn<any>;
     definedFields: Map<string, JsonFieldOptions> = new Map();
 
-    static getOrCreate(target: unknown): JsonSchema {
-        const constructor = (target as JsonifiedConstructor)
-        return constructor["__json_schema"] = constructor["__json_schema"] || new JsonSchema();
+    static getOrCreate(target: Function): JsonSchema {
+        const constructor = (target as JsonConstructor)
+        return constructor.jsonSchema = constructor.jsonSchema || new JsonSchema();
     }
 
-    static get(target: unknown): JsonSchema | undefined {
-        if (!(target instanceof Function)) return undefined
-        if (!Object.hasOwn(target, "__json_schema")) return undefined;
-        return (target as JsonifiedConstructor)["__json_schema"];
+    static get(target: Function): JsonSchema | undefined {
+        return (target as JsonConstructor).jsonSchema;
     }
 
-    static isPresent(target: unknown): boolean {
+    static isPresent(target: Function): boolean {
         return !!JsonSchema.get(target);
     }
 

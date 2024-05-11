@@ -32,11 +32,12 @@ for your data management needs. Explore the [Sequelize support](#sequelize-suppo
     * [Change Property Name Casing](#change-property-name-casing)
     * [Custom serializers](#custom-serializers)
         + [Global Serializer](#global-serializer)
-        + [Field-Specific Serializer](#field-specific-serializer)
-    * [Contextual Field-Specific Serializer](#contextual-field-specific-serializer)
+        + [Class-Level Serializer](#class-level-serializer)
+        + [Field-Level Serializer](#field-level-serializer)
+    * [Contextual Custom Serializer](#contextual-custom-serializer)
     * [Limit Serialization Depth](#limit-serialization-depth)
+    * [BigInt Serialization](#bigint-serialization)
 - [Circular References](#circular-references)
-- [JSON Stringify compatibility](#json-stringify-compatibility)
 - [Sequelize support](#sequelize-support)
 - [Let's Contribute Together!](#lets-contribute-together)
     * [How You Can Help](#how-you-can-help)
@@ -91,14 +92,14 @@ with Jsonthis!: you can define custom serializers, change property visibility, a
 ### JSON Serialization
 
 Jsonthis! offer a `toJson(target, options?)` method, as well as the `toJSON()` method on your classes
-via the `models` options in the constructor. The first allows for more flexibility and customization (such as 
+via the `models` options in the constructor. The first allows for more flexibility and customization (such as
 conditional-serialization - see [Conditional Visibility](#conditional-visibility) for more details),
 while the latter is a more straightforward approach that makes your classes compatible with `JSON.stringify()`.
 
 ```typescript
 class User {
     // (...) properties and methods
-    
+
     // This prevent TypeScript from throwing an error when calling toJSON() on the User class
     declare toJSON: () => any;
 }
@@ -148,8 +149,8 @@ This allows you to dynamically show or hide properties as needed.
 In the following example, the `email` property is only visible if the email owner is requesting it:
 
 ```typescript
-function showEmailOnlyToOwner(/* email */_: string, state: JsonTraversalState, opts?: ToJsonOptions): boolean {
-    return opts?.context?.callerId === (state.parent as User)?.id;
+function showEmailOnlyToOwner(jsonthis: Jsonthis, state: JsonTraversalState, value: string, options?: ToJsonOptions): boolean {
+    return options?.context?.callerId === (state.parent as User)?.id;
 }
 
 class User {
@@ -228,8 +229,9 @@ console.log(user.toJSON());
 
 ### Custom serializers
 
-Jsonthis! allows you to define custom serializers to transform property values during serialization.
-These can be either **global** or **field-specific**.
+Jsonthis! enables you to define custom serializers to transform property values during serialization.
+These can be set at the **global**, **class**, or **field** level, with priority given to **field-level** serializers
+over **class-level** serializers, and **class-level** serializers over **global-level** serializers.
 
 #### Global Serializer
 
@@ -255,7 +257,36 @@ console.log(user.toJSON());
 // { id: 1, registeredAt: 'Sat, 27 Apr 2024 17:03:52 GMT' }
 ```
 
-#### Field-Specific Serializer
+#### Class-Level Serializer
+
+Define a custom serializer for a specific class using the `@JsonSerializer` decorator:
+
+```typescript
+function valueSerializer(value: Value): string {
+    return `${value.type}(${value.value})`;
+}
+
+@JsonSerializer(valueSerializer)
+class Value {
+    type: string;
+    value: any;
+
+    constructor(type: string, value: any) {
+        this.type = type;
+        this.value = value;
+    }
+
+    declare toJSON: () => any;
+}
+
+const jsonthis = new Jsonthis({models: [Value]});
+
+const value = new Value("int", 123);
+console.log(value.toJSON());
+// "int(123)"
+```
+
+#### Field-Level Serializer
 
 Utilize the `@JsonField` decorator to specify a custom serializer for a specific property:
 
@@ -279,14 +310,17 @@ console.log(user.toJSON());
 // { id: 1, email: 'j******e@gmail.com' }
 ```
 
-### Contextual Field-Specific Serializer
+### Contextual Custom Serializer
 
 Jsonthis! serialization supports a user-defined context object that can be used to further influence the serialization
-process:
+process. All serializers (global, class-level, field-level) can access the context object through the `options`
+parameter.
+
+Here's an example of a field-level contextual custom serializer:
 
 ```typescript
-function maskEmail(value: string, state: JsonTraversalState, opts?: ToJsonOptions): string {
-    return value.replace(/(?<=.).(?=[^@]*?.@)/g, opts?.context?.maskChar || "*");
+function maskEmail(value: string, options?: ToJsonOptions): string {
+    return value.replace(/(?<=.).(?=[^@]*?.@)/g, options?.context?.maskChar || "*");
 }
 
 class User {
@@ -342,10 +376,47 @@ console.log(jsonthis.toJson(user, {maxDepth: 1}));
 // { id: 1, name: 'John', friend: { id: 2, name: 'Jane' } }
 ```
 
+### BigInt Serialization
+
+By default, Jsonthis! serializes `BigInt` values as strings if they exceed the maximum safe integer value to avoid
+precision loss:
+
+```typescript
+class User {
+    id: bigint = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    declare toJSON: () => any;
+}
+
+new Jsonthis({models: [User]});
+const user = new User();
+console.log(user.toJSON());
+// { id: '9007199254740992' }
+
+console.log(JSON.stringify(user));
+// {"id":"9007199254740992"}
+```
+
+However, you can change this behavior by setting the `transformBigInt` option to `false`. This is useful if you plan to
+use custom JSON implementations that can handle `BigInt` values, for
+example the [json-bigint](https://www.npmjs.com/package/json-bigint) library:
+
+```typescript
+import JSONBigInt from "json-bigint";
+
+new Jsonthis({models: [User], transformBigInt: false});
+const user = new User();
+console.log(user.toJSON());
+// { id: 9007199254740992n }
+
+console.log(JSONBigInt.stringify(user));
+// {"id":9007199254740992}
+```
+
 ## Circular References
 
-Jsonthis! can detect circular references out of the box. When serializing an object with circular references, the default
-behavior is to throw a `CircularReferenceError`. However, you can customize this behavior by providing a custom handler:
+Jsonthis! can detect circular references out of the box. When serializing an object with circular references, the
+default behavior is to throw a `CircularReferenceError`. However, you can customize this behavior by providing a custom
+handler:
 
 ```typescript
 function serializeCircularReference(value: any): any {
@@ -380,11 +451,12 @@ console.log(user.toJSON());
 ```
 
 ## Sequelize support
+
 Jsonthis! seamlessly integrates with the [Sequelize](https://sequelize.org/) ORM library.
 To utilize Jsonthis! with Sequelize, simply specify it in the library constructor:
 
 ```typescript
-const sequelize = new Sequelize({ ... });
+const sequelize = new Sequelize({...});
 
 const jsonthis = new Jsonthis({
     sequelize: sequelize
@@ -392,7 +464,7 @@ const jsonthis = new Jsonthis({
 ```
 
 Now, Jsonthis! will seamlessly intercept the serialization process when using the `toJSON()` method
-with Sequelize models: 
+with Sequelize models:
 
 ```typescript
 function maskEmail(value: string): string {
