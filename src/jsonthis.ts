@@ -1,5 +1,4 @@
 import {camelCase, pascalCase, snakeCase} from "case-anything";
-import {Model, Sequelize} from "@sequelize/core";
 import {
     evaluateJsonTraversalFn,
     JsonFieldOptions,
@@ -20,7 +19,7 @@ function isNull(value: any): boolean {
 export type JsonthisOptions = {
     keepNulls?: boolean;  // Whether to keep null values or not (default is false).
     case?: "camel" | "snake" | "pascal";  // The case to use for field names, default is to keep field name as is.
-    sequelize?: Sequelize; // Install Jsonthis to this Sequelize instance.
+    sequelize?: /* Sequelize */ any; // Install Jsonthis to this Sequelize instance.
     circularReferenceSerializer?: JsonTraversalFn<any>; // The custom serializer function for circular references, default it to throw an error.
     maxDepth?: number; // The maximum depth to traverse the object, default is unlimited.
     models?: Function[]; // The model classes to install Jsonthis' toJSON() method.
@@ -218,7 +217,7 @@ export class Jsonthis {
         for (const model of models) {
             const schema = JsonSchema.get(model);
 
-            this.registerGlobalSerializer(model, (jsonthis: Jsonthis, state: JsonTraversalState, value: Model, options?: ToJsonOptions) => {
+            this.registerGlobalSerializer(model, (jsonthis: Jsonthis, state: JsonTraversalState, value: /* Model */ any, options?: ToJsonOptions) => {
                 return jsonthis.toJson(value.get(), options, state, schema);
             });
 
