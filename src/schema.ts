@@ -157,11 +157,11 @@ export class JsonSchema {
     }
 
     static get(target: Function): JsonSchema | undefined {
-        return (target as JsonConstructor).jsonSchema;
+        return target ? (target as JsonConstructor).jsonSchema : undefined;
     }
 
     static isPresent(target: Function): boolean {
-        return !!JsonSchema.get(target);
+        return target && !!JsonSchema.get(target);
     }
 
 }
