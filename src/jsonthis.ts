@@ -218,7 +218,17 @@ export class Jsonthis {
             const schema = JsonSchema.get(model);
 
             this.registerGlobalSerializer(model, (jsonthis: Jsonthis, state: JsonTraversalState, value: /* Model */ any, options?: ToJsonOptions) => {
-                return jsonthis.toJson(value.get(), options, state, schema);
+                const data = value.get();
+
+                // Serialize dynamic virtual fields
+                // NOTE: currently, Sequelize does not return virtual fields in the get() method.
+                // There is an issue open for this: https://github.com/sequelize/sequelize/issues/17589
+                for (const [name, attribute] of this.listSequelizeAttributes(model)) {
+                    if (attribute.type.constructor.name === "VIRTUAL" && attribute.get)
+                        data[name] = attribute.get.call(value);
+                }
+
+                return jsonthis.toJson(data, options, state, schema);
             });
 
             const jsonthis = this;
@@ -227,4 +237,13 @@ export class Jsonthis {
             }
         }
     }
+
+    private listSequelizeAttributes(model: any): [string, SequelizeAttribute][] {
+        return Object.entries(model.modelDefinition.rawAttributes);
+    }
+}
+
+type SequelizeAttribute = {
+    type: object;
+    get?: () => any;
 }
